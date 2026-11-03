@@ -78,6 +78,9 @@ function buildNormalizedModelGroup(gltf: GLTF, config: CelestialBodyConfig): THR
         if (cloned instanceof THREE.MeshStandardMaterial || cloned instanceof THREE.MeshPhysicalMaterial) {
           cloned.roughness = config.materialTuning.roughness;
           cloned.metalness = config.materialTuning.metalness;
+          if (cloned instanceof THREE.MeshPhysicalMaterial) {
+            cloned.clearcoat = 0;
+          }
           if (cloned.normalMap) {
             cloned.normalScale.set(
               config.materialTuning.normalScale,

@@ -6,6 +6,10 @@ export type TravelPhase = 'idle' | 'acceleration' | 'cruise' | 'arrival';
 
 export type ViewportTier = 'desktop' | 'tablet' | 'mobile';
 
+export type OrbitalSlot = 'center' | 'left' | 'right';
+
+export type SlotAssignmentMap = Record<CelestialBodyId, OrbitalSlot>;
+
 export interface AtmosphereConfig {
   enabled: boolean;
   color: string;

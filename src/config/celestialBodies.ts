@@ -62,7 +62,7 @@ export const CELESTIAL_BODIES: Record<CelestialBodyId, CelestialBodyConfig> = {
     },
     initialRotation: [0.18, -1.35, 0.0],
     axialTilt: 0.41, // ~23.5°
-    idleRotationSpeed: 0.045,
+    idleRotationSpeed: 0.18,
     atmosphere: {
       enabled: true,
       color: '#38BDF8',
@@ -91,8 +91,9 @@ export const CELESTIAL_BODIES: Record<CelestialBodyId, CelestialBodyConfig> = {
     subtitle: 'Satélite Natural da Terra · Arquivo Silencioso',
     description:
       'Superfície rochosa preservada no vácuo sem atmosfera. Guarda módulos de descida, sismômetros passivos e retrorefletores laser das missões Apollo que ainda respondem a pulsos enviados da Terra.',
-    modelPath: '/3d_models/Moon_1_3474.glb',
+    modelPath: '/3d_models/moon_small.glb',
     candidatePaths: [
+      '/3d_models/moon_small.glb',
       '/3d_models/Moon_1_3474.glb',
       '/3d_models/moon.glb',
       '/3d_models/Moon.glb',
@@ -120,7 +121,7 @@ export const CELESTIAL_BODIES: Record<CelestialBodyId, CelestialBodyConfig> = {
     },
     initialRotation: [0.08, -0.65, 0.0],
     axialTilt: 0.11, // ~6.68°
-    idleRotationSpeed: 0.028,
+    idleRotationSpeed: 0.14,
     atmosphere: {
       enabled: false, // A Lua mantém sua aparência rochosa, sem halo atmosférico
       color: '#000000',
@@ -178,7 +179,7 @@ export const CELESTIAL_BODIES: Record<CelestialBodyId, CelestialBodyConfig> = {
     },
     initialRotation: [0.14, 0.85, 0.0],
     axialTilt: 0.44, // ~25.19°
-    idleRotationSpeed: 0.04,
+    idleRotationSpeed: 0.17,
     atmosphere: {
       enabled: true,
       color: '#E07A5F',

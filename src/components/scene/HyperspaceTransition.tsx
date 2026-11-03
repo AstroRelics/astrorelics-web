@@ -1,7 +1,7 @@
 import React, { MutableRefObject, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
-import { CelestialBodyId, TravelPhase } from '../../types/experience';
+import { CelestialBodyId, SlotAssignmentMap, TravelPhase } from '../../types/experience';
 
 export interface TravelRuntimeState {
   isTraveling: boolean;
@@ -12,6 +12,8 @@ export interface TravelRuntimeState {
   phase: TravelPhase;
   fromId: CelestialBodyId;
   toId: CelestialBodyId;
+  fromSlots: SlotAssignmentMap;
+  toSlots: SlotAssignmentMap;
 }
 
 interface HyperspaceTransitionProps {
@@ -167,8 +169,8 @@ export const HyperspaceTransition: React.FC<HyperspaceTransitionProps> = ({
       state.warpIntensity = warp;
 
       // Variação sutil e cinematográfica de FOV durante o salto espacial
-      const targetFov = 42 + warp * 5.2;
-      perspCam.fov = THREE.MathUtils.damp(perspCam.fov, targetFov, 9, safeDelta);
+      const targetFov = 42 + warp * 2.8;
+      perspCam.fov = THREE.MathUtils.damp(perspCam.fov, targetFov, 6.5, safeDelta);
       perspCam.updateProjectionMatrix();
 
       // Atualiza rastros luminosos 3D

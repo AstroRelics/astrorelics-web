@@ -80,8 +80,8 @@ npm run build
 Os arquivos 3D (`.glb` ou `.gltf`) ficam na pasta **`3d_models/`** na raiz do projeto, e toda a configuração visual, escala e posicionamento está centralizada em **`src/config/celestialBodies.ts`**:
 
 - **Terra:** `3d_models/Earth_1_12756.glb` *(já configurado e carregado)*
+- **Lua:** `3d_models/moon_small.glb` *(já configurado e carregado)*
 - **Marte:** `3d_models/24881_Mars_1_6792.glb` *(já configurado e carregado)*
-- **Lua:** coloque o arquivo na pasta `3d_models/` com um dos nomes reconhecidos automaticamente (`3d_models/Moon_1_3474.glb`, `3d_models/moon.glb` ou `3d_models/lua.glb`) ou aponte o nome em `modelPath` dentro de `src/config/celestialBodies.ts`. Enquanto o arquivo `.glb` da Lua não estiver na pasta, o sistema utiliza automaticamente uma esfera rochosa procedural local (`FallbackCelestialSphere.tsx`) sem depender de downloads externos.
 
 > **Normalização automática:** O pré-carregador (`src/utils/modelPreloader.ts`) calcula a *Bounding Box* (`THREE.Box3`) de cada modelo `.glb`, centraliza o pivô na origem `(0, 0, 0)` e normaliza seu raio para `1.0` antes de aplicar `foregroundRadius` e `backgroundRadius`.
 

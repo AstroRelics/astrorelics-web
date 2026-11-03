@@ -9,6 +9,10 @@ import {
   ViewportTier,
 } from '../../types/experience';
 import { LoadedCelestialAsset } from '../../utils/modelPreloader';
+import {
+  computeAllTransitionTransforms,
+  getSlotTransform,
+} from '../../utils/orbitalTransitionMath';
 import { FallbackCelestialSphere } from './FallbackCelestialSphere';
 import { AtmosphereHalo } from './AtmosphereHalo';
 import { ExplorationDragState } from './ExplorationControls';
@@ -26,40 +30,6 @@ interface CelestialBodyActorProps {
   travelRef: MutableRefObject<TravelRuntimeState>;
   onHighlightBody: (id: CelestialBodyId) => void;
   onInitiateTravel: (id: CelestialBodyId) => void;
-}
-
-function getTargetTransform(
-  config: CelestialBodyConfig,
-  activeId: CelestialBodyId,
-  viewportTier: ViewportTier,
-  aspect: number
-): { position: [number, number, number]; scale: number } {
-  if (config.id === activeId) {
-    const pos = config.foregroundPosition[viewportTier];
-    const mobileScaleFactor = viewportTier === 'mobile' ? 0.62 : viewportTier === 'tablet' ? 0.88 : 1.0;
-    return {
-      position: pos,
-      scale: config.foregroundRadius * mobileScaleFactor,
-    };
-  }
-
-  const slotMap = config.backgroundWhenSelectedIs[activeId];
-  const rawPos = slotMap ? slotMap[viewportTier] : ([-3.5, 1.2, -5.0] as [number, number, number]);
-
-  // Garante que em qualquer proporção de tela o corpo ao fundo permaneça dentro da área visível
-  const cameraZ = 8.2;
-  const distFromCam = cameraZ - rawPos[2];
-  const halfHeight = distFromCam * Math.tan(THREE.MathUtils.degToRad(21));
-  const halfWidth = halfHeight * aspect;
-  const safeMaxX = Math.max(1.25, halfWidth - 0.68);
-
-  const clampedX = THREE.MathUtils.clamp(rawPos[0], -safeMaxX, safeMaxX);
-  const bgScaleFactor = viewportTier === 'mobile' ? 0.66 : viewportTier === 'tablet' ? 0.88 : 1.0;
-
-  return {
-    position: [clampedX, rawPos[1], rawPos[2]],
-    scale: config.backgroundRadius * bgScaleFactor,
-  };
 }
 
 export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
@@ -107,70 +77,70 @@ export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
     const travel = travelRef.current;
 
     if (travel.isTraveling) {
-      // Calcula interpolação cinematográfica entre estado de origem (fromId) e destino (toId)
-      const fromTransform = getTargetTransform(
-        config,
-        travel.fromId,
+      // Calcula a translação orbital 3D suave (passando pela frente e por trás no plano orbital)
+      const allTransforms = computeAllTransitionTransforms(
+        travel,
         viewportTier,
-        viewport.aspect
+        viewport.aspect,
+        reducedMotion
       );
-      const toTransform = getTargetTransform(
-        config,
-        travel.toId,
-        viewportTier,
-        viewport.aspect
+      const currentTransform = allTransforms[config.id];
+
+      group.position.x = THREE.MathUtils.damp(
+        group.position.x,
+        currentTransform.position[0],
+        16,
+        safeDelta
       );
-
-      // Curva suave em S (smoothstep cúbico)
-      const p = travel.progress;
-      const smoothT = p * p * (3 - 2 * p);
-
-      let tx = THREE.MathUtils.lerp(fromTransform.position[0], toTransform.position[0], smoothT);
-      let ty = THREE.MathUtils.lerp(fromTransform.position[1], toTransform.position[1], smoothT);
-      let tz = THREE.MathUtils.lerp(fromTransform.position[2], toTransform.position[2], smoothT);
-      let tScale = THREE.MathUtils.lerp(fromTransform.scale, toTransform.scale, smoothT);
-
-      if (!reducedMotion) {
-        // Efeito de profundidade durante a fase de viagem em hiperespaço
-        const warpArch = Math.sin(p * Math.PI);
-        if (config.id === travel.fromId) {
-          // O corpo que deixamos para trás recua rapidamente em Z
-          tz -= warpArch * 3.2;
-        } else if (config.id === travel.toId) {
-          // O novo destino emerge do espaço profundo e desacelera suavemente em primeiro plano
-          const arrivalCurve = Math.pow(p, 1.65);
-          tx = THREE.MathUtils.lerp(fromTransform.position[0] * 0.65, toTransform.position[0], arrivalCurve);
-          ty = THREE.MathUtils.lerp(fromTransform.position[1] * 0.65, toTransform.position[1], arrivalCurve);
-          tz = THREE.MathUtils.lerp(fromTransform.position[2] - 4.5, toTransform.position[2], arrivalCurve);
-          tScale = THREE.MathUtils.lerp(fromTransform.scale * 0.75, toTransform.scale, arrivalCurve);
-        } else {
-          tz -= warpArch * 1.6;
-        }
-      }
-
-      group.position.set(tx, ty, tz);
-      group.scale.setScalar(tScale);
+      group.position.y = THREE.MathUtils.damp(
+        group.position.y,
+        currentTransform.position[1],
+        16,
+        safeDelta
+      );
+      group.position.z = THREE.MathUtils.damp(
+        group.position.z,
+        currentTransform.position[2],
+        16,
+        safeDelta
+      );
+      const dampedScale = THREE.MathUtils.damp(
+        group.scale.x,
+        currentTransform.scale,
+        16,
+        safeDelta
+      );
+      group.scale.setScalar(dampedScale);
     } else {
-      // Estado de exploração: amortecimento suave para posição e escala responsivas
-      const target = getTargetTransform(config, selectedId, viewportTier, viewport.aspect);
+      // Usa o slot orbital atribuído em `travel.toSlots` como referência estável
+      const assignedSlot = travel.toSlots[config.id];
+      const target = getSlotTransform(
+        config,
+        assignedSlot,
+        viewportTier,
+        viewport.aspect
+      );
       targetPosVec.set(target.position[0], target.position[1], target.position[2]);
 
-      group.position.x = THREE.MathUtils.damp(group.position.x, targetPosVec.x, 6.5, safeDelta);
-      group.position.y = THREE.MathUtils.damp(group.position.y, targetPosVec.y, 6.5, safeDelta);
-      group.position.z = THREE.MathUtils.damp(group.position.z, targetPosVec.z, 6.5, safeDelta);
+      group.position.x = THREE.MathUtils.damp(group.position.x, targetPosVec.x, 7.5, safeDelta);
+      group.position.y = THREE.MathUtils.damp(group.position.y, targetPosVec.y, 7.5, safeDelta);
+      group.position.z = THREE.MathUtils.damp(group.position.z, targetPosVec.z, 7.5, safeDelta);
 
       const nextScale = THREE.MathUtils.damp(
         group.scale.x,
         target.scale * (isHighlighted ? 1.07 : 1.0),
-        7.0,
+        7.5,
         safeDelta
       );
       group.scale.setScalar(nextScale);
     }
 
-    // Rotação contínua sutil quando não está sendo arrastado
+    // Rotação axial contínua (autorrotação em torno do próprio eixo) + impulso suave durante a rotação orbital
     if (!reducedMotion && (!isSelected || !dragStateRef.current.isDragging)) {
-      idleSpinAngleRef.current += config.idleRotationSpeed * safeDelta;
+      const transitionSpinBoost = travel.isTraveling
+        ? Math.sin(travel.progress * Math.PI) * 0.65
+        : 0;
+      idleSpinAngleRef.current += (config.idleRotationSpeed + transitionSpinBoost) * safeDelta;
     }
 
     if (isSelected) {

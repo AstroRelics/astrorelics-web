@@ -10,6 +10,10 @@ import {
   LoadedCelestialAsset,
   preloadAllCelestialModels,
 } from './utils/modelPreloader';
+import {
+  computeRotatedSlotAssignments,
+  INITIAL_SLOT_ASSIGNMENTS,
+} from './utils/orbitalTransitionMath';
 import { soundEffects } from './utils/soundEffects';
 import { SpaceExperienceCanvas } from './components/scene/SpaceExperienceCanvas';
 import { ExplorationDragState } from './components/scene/ExplorationControls';
@@ -83,12 +87,14 @@ export const App: React.FC = () => {
   const travelRef = useRef<TravelRuntimeState>({
     isTraveling: false,
     elapsed: 0,
-    duration: 2.55,
+    duration: 2.85,
     progress: 0,
     warpIntensity: 0,
     phase: 'idle',
     fromId: 'earth',
     toId: 'earth',
+    fromSlots: { ...INITIAL_SLOT_ASSIGNMENTS },
+    toSlots: { ...INITIAL_SLOT_ASSIGNMENTS },
   });
 
   // Monitora redimensionamento e preferência de movimento reduzido do sistema
@@ -113,6 +119,7 @@ export const App: React.FC = () => {
   // Executa o pré-carregamento dos modelos 3D antes de liberar a exploração
   const runPreload = useCallback(async (force = false) => {
     setExperienceState('loading');
+    setLoadProgress(0);
     setLoadError(null);
 
     try {
@@ -123,7 +130,8 @@ export const App: React.FC = () => {
       }, force);
 
       setLoadedAssets(assets);
-      setExperienceState('exploring');
+      setLoadProgress(100);
+      setLoadStatusLabel('Telemetria visual pronta');
     } catch (err) {
       const msg =
         err instanceof Error
@@ -181,12 +189,16 @@ export const App: React.FC = () => {
         return;
       }
 
-      const duration = reducedMotion ? 0.95 : 2.55;
+      const duration = reducedMotion ? 1.25 : 2.85;
 
       // Reinicia suavemente a orientação acumulada para apresentar a face principal do novo destino
       dragStateRef.current.targetRotationOffset.set(0, 0);
       dragStateRef.current.userRotationOffset.set(0, 0);
       parallaxOffsetRef.current.set(0, 0);
+
+      // Gira os 3 astros em conjunto em 120° ao longo do anel orbital 3D
+      const currentSlots = { ...travelRef.current.toSlots };
+      const { nextSlots } = computeRotatedSlotAssignments(currentSlots, destinationId);
 
       travelRef.current = {
         isTraveling: true,
@@ -197,6 +209,8 @@ export const App: React.FC = () => {
         phase: 'acceleration',
         fromId: selectedId,
         toId: destinationId,
+        fromSlots: currentSlots,
+        toSlots: nextSlots,
       };
 
       setHighlightedId(null);
@@ -241,6 +255,7 @@ export const App: React.FC = () => {
           errorMessage={loadError}
           onRetry={() => runPreload(true)}
           onContinueWithFallback={handleContinueWithProvisional}
+          onFinishTransition={() => setExperienceState('exploring')}
         />
       )}
 
