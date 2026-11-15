@@ -81,11 +81,21 @@ export const SpaceLighting: React.FC = () => {
       <ambientLight intensity={0.11} color="#0F1C36" />
       <hemisphereLight args={['#1E3A5F', '#03060E', 0.2]} />
 
-      {/* Luz direcional principal coerente com a posição aparente do Sol */}
+      {/* Luz direcional principal coerente com a posição aparente do Sol, projetando sombras reais de alta definição */}
       <directionalLight
         position={SUN_SCENE_CONFIG.keyLightPosition}
         intensity={2.95}
         color="#FFF9EE"
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0003}
+        shadow-normalBias={0.015}
+        shadow-camera-near={1}
+        shadow-camera-far={32}
+        shadow-camera-left={-4.5}
+        shadow-camera-right={4.5}
+        shadow-camera-top={4.5}
+        shadow-camera-bottom={-4.5}
       />
 
       {/* Luz de recorte vinda da coordenada 3D profunda do Sol para acentuar o limbo solar */}

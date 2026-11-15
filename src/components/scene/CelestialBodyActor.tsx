@@ -2,10 +2,12 @@ import React, { MutableRefObject, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
+import { SPACE_ARTIFACTS, SPACE_ARTIFACT_ORDER } from '../../config/spaceArtifacts';
 import {
   CelestialBodyConfig,
   CelestialBodyId,
   ExperienceState,
+  SpaceArtifactId,
   ViewportTier,
 } from '../../types/experience';
 import { LoadedCelestialAsset } from '../../utils/modelPreloader';
@@ -17,12 +19,14 @@ import { FallbackCelestialSphere } from './FallbackCelestialSphere';
 import { AtmosphereHalo } from './AtmosphereHalo';
 import { ExplorationDragState } from './ExplorationControls';
 import { TravelRuntimeState } from './HyperspaceTransition';
+import { ArtifactPinMarker, latLonToVector3 } from './ArtifactSceneActors';
 
 interface CelestialBodyActorProps {
   config: CelestialBodyConfig;
   asset: LoadedCelestialAsset | undefined;
   selectedId: CelestialBodyId;
   highlightedId: CelestialBodyId | null;
+  activeArtifactId: SpaceArtifactId | null;
   experienceState: ExperienceState;
   viewportTier: ViewportTier;
   reducedMotion: boolean;
@@ -30,6 +34,7 @@ interface CelestialBodyActorProps {
   travelRef: MutableRefObject<TravelRuntimeState>;
   onHighlightBody: (id: CelestialBodyId) => void;
   onInitiateTravel: (id: CelestialBodyId) => void;
+  onSelectArtifact: (id: SpaceArtifactId) => void;
 }
 
 export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
@@ -37,6 +42,7 @@ export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
   asset,
   selectedId,
   highlightedId,
+  activeArtifactId,
   experienceState,
   viewportTier,
   reducedMotion,
@@ -44,6 +50,7 @@ export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
   travelRef,
   onHighlightBody,
   onInitiateTravel,
+  onSelectArtifact,
 }) => {
   const { viewport, gl } = useThree();
   const rootGroupRef = useRef<THREE.Group>(null);
@@ -57,7 +64,18 @@ export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
   const isSelected = selectedId === config.id;
   const isHighlighted = !isSelected && (highlightedId === config.id || isHovered);
 
-  // Clona a cena normalizada para esta instância na árvore R3F
+  // Filtra os artefatos que estão pousados na superfície deste corpo celeste (Lua ou Marte)
+  const surfaceArtifacts = useMemo(
+    () =>
+      SPACE_ARTIFACT_ORDER.map((id) => SPACE_ARTIFACTS[id]).filter(
+        (a) =>
+          a.placementType === 'body-surface' &&
+          a.relatedBodyId === config.id &&
+          Boolean(a.surfaceLatLon)
+      ),
+    [config.id]
+  );
+
   const clonedModelScene = useMemo(() => {
     if (asset?.source === 'glb' && asset.normalizedGroup) {
       return asset.normalizedGroup.clone(true);
@@ -65,7 +83,6 @@ export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
     return null;
   }, [asset]);
 
-  // Vetores pré-alocados para interpolação sem garbage collection por quadro
   const targetPosVec = useMemo(() => new THREE.Vector3(), []);
 
   useFrame((_, delta) => {
@@ -75,9 +92,11 @@ export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
     if (!group || !spinGroup) return;
 
     const travel = travelRef.current;
+    const inspectingArtifact =
+      Boolean(activeArtifactId) ||
+      Boolean(travel.isTraveling && travel.targetArtifactId);
 
-    if (travel.isTraveling) {
-      // Calcula a translação orbital 3D suave (passando pela frente e por trás no plano orbital)
+    if (travel.isTraveling && !travel.isArtifactJump) {
       const allTransforms = computeAllTransitionTransforms(
         travel,
         viewportTier,
@@ -112,7 +131,6 @@ export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
       );
       group.scale.setScalar(dampedScale);
     } else {
-      // Usa o slot orbital atribuído em `travel.toSlots` como referência estável
       const assignedSlot = travel.toSlots[config.id];
       const target = getSlotTransform(
         config,
@@ -120,30 +138,46 @@ export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
         viewportTier,
         viewport.aspect
       );
-      targetPosVec.set(target.position[0], target.position[1], target.position[2]);
+
+      // Quando um objeto 3D está em inspeção, recua suavemente os corpos celestes para o fundo
+      if (inspectingArtifact) {
+        const pushX =
+          assignedSlot === 'center'
+            ? viewportTier === 'desktop'
+              ? -4.6
+              : -2.4
+            : target.position[0] * 1.15;
+        const pushY =
+          assignedSlot === 'center' ? -1.45 : target.position[1] * 1.05;
+        const pushZ = assignedSlot === 'center' ? -6.8 : target.position[2] - 2.5;
+        targetPosVec.set(pushX, pushY, pushZ);
+      } else {
+        targetPosVec.set(target.position[0], target.position[1], target.position[2]);
+      }
 
       group.position.x = THREE.MathUtils.damp(group.position.x, targetPosVec.x, 7.5, safeDelta);
       group.position.y = THREE.MathUtils.damp(group.position.y, targetPosVec.y, 7.5, safeDelta);
       group.position.z = THREE.MathUtils.damp(group.position.z, targetPosVec.z, 7.5, safeDelta);
 
-      const nextScale = THREE.MathUtils.damp(
-        group.scale.x,
-        target.scale * (isHighlighted ? 1.07 : 1.0),
-        7.5,
-        safeDelta
-      );
+      const desiredScale = inspectingArtifact
+        ? target.scale * (assignedSlot === 'center' ? 0.34 : 0.72)
+        : target.scale * (isHighlighted ? 1.07 : 1.0);
+
+      const nextScale = THREE.MathUtils.damp(group.scale.x, desiredScale, 7.5, safeDelta);
       group.scale.setScalar(nextScale);
     }
 
-    // Rotação axial contínua (autorrotação em torno do próprio eixo) + impulso suave durante a rotação orbital
-    if (!reducedMotion && (!isSelected || !dragStateRef.current.isDragging)) {
+    if (
+      !reducedMotion &&
+      (!isSelected || inspectingArtifact || !dragStateRef.current.isDragging)
+    ) {
       const transitionSpinBoost = travel.isTraveling
         ? Math.sin(travel.progress * Math.PI) * 0.65
         : 0;
       idleSpinAngleRef.current += (config.idleRotationSpeed + transitionSpinBoost) * safeDelta;
     }
 
-    if (isSelected) {
+    if (isSelected && !inspectingArtifact) {
       const targetPitch = config.initialRotation[0] + dragStateRef.current.userRotationOffset.x;
       const targetYaw =
         config.initialRotation[1] +
@@ -159,7 +193,6 @@ export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
         safeDelta
       );
     } else {
-      // Corpos ao fundo mantêm rotação suave e orientação natural
       spinGroup.rotation.x = THREE.MathUtils.damp(
         spinGroup.rotation.x,
         config.initialRotation[0],
@@ -184,26 +217,24 @@ export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
 
   const handleBackgroundClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
-    if (experienceState !== 'exploring' || isSelected) return;
+    if (experienceState !== 'exploring' || (isSelected && !activeArtifactId)) return;
     if (isRecentDrag()) return;
 
     const now = performance.now();
     const deltaClick = now - lastClickTimeRef.current;
     lastClickTimeRef.current = now;
 
-    // Se dois cliques ocorrerem em até 380ms no mesmo corpo ao fundo, inicia a viagem
     if (deltaClick > 20 && deltaClick < 380) {
       onInitiateTravel(config.id);
       return;
     }
 
-    // Clique simples: destaca o nome e indica a possibilidade de viajar
     onHighlightBody(config.id);
   };
 
   const handleBackgroundDoubleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
-    if (experienceState !== 'exploring' || isSelected) return;
+    if (experienceState !== 'exploring' || (isSelected && !activeArtifactId)) return;
     if (isRecentDrag()) return;
 
     onInitiateTravel(config.id);
@@ -211,14 +242,14 @@ export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
 
   return (
     <group ref={rootGroupRef} name={`celestial-actor-${config.id}`}>
-      {/* Esfera de colisão generosa para facilitar seleção e clique duplo nos corpos menores ao fundo */}
+      {/* Esfera de colisão generosa */}
       <mesh
-        scale={isSelected ? 1.01 : 1.42}
+        scale={isSelected && !activeArtifactId ? 1.01 : 1.42}
         onClick={handleBackgroundClick}
         onDoubleClick={handleBackgroundDoubleClick}
         onPointerOver={(e) => {
           e.stopPropagation();
-          if (experienceState !== 'exploring' || isSelected) return;
+          if (experienceState !== 'exploring' || (isSelected && !activeArtifactId)) return;
           setIsHovered(true);
           gl.domElement.style.cursor = 'pointer';
         }}
@@ -234,7 +265,7 @@ export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
 
-      {/* Grupo com inclinação axial e rotação interativa do corpo celeste */}
+      {/* Grupo com inclinação axial e rotação interativa do corpo celeste + Pins de superfície */}
       <group rotation={[0, 0, config.axialTilt * 0.25]}>
         <group ref={spinGroupRef}>
           {clonedModelScene ? (
@@ -242,14 +273,39 @@ export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
           ) : (
             <FallbackCelestialSphere config={config} />
           )}
+
+          {/* Pins 3D com ícones cartoonizados fixados nas coordenadas de pouso na Lua e em Marte */}
+          {surfaceArtifacts.map((artifact) => {
+            const [lat, lon] = artifact.surfaceLatLon!;
+            const pos = latLonToVector3(lat, lon, 1.07);
+            const stemEnd = latLonToVector3(lat, lon, 1.0);
+            return (
+              <group key={artifact.id}>
+                {/* Ponto luminoso na superfície onde o equipamento foi deixado */}
+                <mesh position={stemEnd} raycast={() => null}>
+                  <sphereGeometry args={[0.028, 12, 12]} />
+                  <meshBasicMaterial color={artifact.accentColor} />
+                </mesh>
+                <group position={pos}>
+                  <ArtifactPinMarker
+                    artifact={artifact}
+                    activeArtifactId={activeArtifactId}
+                    experienceState={experienceState}
+                    compact={!isSelected}
+                    onSelectArtifact={onSelectArtifact}
+                  />
+                </group>
+              </group>
+            );
+          })}
         </group>
       </group>
 
-      {/* Halo atmosférico discreto para Terra e Marte (desativado para a Lua) */}
+      {/* Halo atmosférico discreto para Terra e Marte */}
       <AtmosphereHalo atmosphere={config.atmosphere} />
 
-      {/* Anel orbital sutil de marcação quando o corpo está ao fundo e destacado */}
-      {!isSelected && experienceState === 'exploring' && (
+      {/* Anel orbital sutil de marcação quando o corpo está ao fundo */}
+      {!isSelected && !activeArtifactId && experienceState === 'exploring' && (
         <mesh ref={ringRef} scale={isHighlighted ? 1.28 : 1.18} raycast={() => null}>
           <ringGeometry args={[0.98, 1.015, 48]} />
           <meshBasicMaterial
@@ -262,8 +318,8 @@ export const CelestialBodyActor: React.FC<CelestialBodyActorProps> = ({
         </mesh>
       )}
 
-      {/* Marcador espacial dos corpos ao fundo: destaca o nome com clique simples e inicia viagem com clique duplo */}
-      {!isSelected && experienceState === 'exploring' && (
+      {/* Marcador espacial dos corpos ao fundo */}
+      {!isSelected && !activeArtifactId && experienceState === 'exploring' && (
         <Html
           position={[0, -1.32, 0]}
           center

@@ -1,5 +1,12 @@
 export type CelestialBodyId = 'earth' | 'moon' | 'mars';
 
+export type SpaceArtifactId =
+  | 'j002e3_s_ivb'
+  | 'apollo_lrrr'
+  | 'apollo_snoopy_lm'
+  | 'opportunity_rover'
+  | 'ingenuity_helicopter';
+
 export type ExperienceState = 'loading' | 'exploring' | 'traveling' | 'error';
 
 export type TravelPhase = 'idle' | 'acceleration' | 'cruise' | 'arrival';
@@ -71,4 +78,46 @@ export interface CelestialBodyConfig {
   materialTuning: MaterialTuningConfig;
   /** Dados contextuais e preparação estrutural para futuras missões e equipamentos */
   telemetry: CelestialBodyTelemetry;
+}
+
+export interface SpaceArtifactSpec {
+  label: string;
+  value: string;
+}
+
+export interface SpaceArtifactConfig {
+  id: SpaceArtifactId;
+  name: string;
+  shortName: string;
+  mission: string;
+  year: string;
+  statusBadge: string;
+  locationLabel: string;
+  coordinatesLabel: string;
+  /** 'body-surface' fixa o Pin no próprio astro (Lua/Marte); 'deep-space' deixa o Pin à deriva no espaço */
+  placementType: 'body-surface' | 'deep-space';
+  /** Corpo celeste onde o objeto está pousado ou ao qual está historicamente associado */
+  relatedBodyId: CelestialBodyId;
+  /** Coordenadas esféricas locais [latGraus, lonGraus] na malha do planeta para fixar o Pin 3D */
+  surfaceLatLon?: [number, number];
+  /** Posição 3D base quando o Pin está à deriva no espaço entre Terra, Lua e Marte */
+  deepSpacePosition?: BackgroundSlotMap;
+  /** Caminho do modelo 3D (.glb) fiel ao objeto real */
+  modelPath: string;
+  /** Escala (raio normalizado) quando o objeto está em foco para inspeção 3D */
+  inspectRadius: number;
+  /** Orientação inicial [pitch, yaw, roll] em radianos para destacar os melhores detalhes do modelo */
+  initialRotation: [number, number, number];
+  /** Velocidade de rotação automática suave durante a inspeção */
+  idleRotationSpeed: number;
+  /** Cor temática de destaque na interface e no Pin */
+  accentColor: string;
+  /** Descrição técnica e física do equipamento */
+  description: string;
+  /** História completa da missão e como foi deixado para trás */
+  history: string;
+  /** Importância científica e legado para a exploração espacial */
+  importance: string;
+  /** Especificações rápidas da ficha técnica */
+  specs: SpaceArtifactSpec[];
 }

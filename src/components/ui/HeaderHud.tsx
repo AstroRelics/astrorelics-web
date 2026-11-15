@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, VolumeX, Compass, Sparkles } from 'lucide-react';
+import { Volume2, VolumeX, Sparkles } from 'lucide-react';
 import { CELESTIAL_BODIES, CELESTIAL_BODY_ORDER } from '../../config/celestialBodies';
 import { CelestialBodyId, ExperienceState, TravelPhase } from '../../types/experience';
 
@@ -56,18 +56,15 @@ export const HeaderHud: React.FC<HeaderHudProps> = ({
       <div className="max-w-7xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Identidade do projeto no canto superior esquerdo */}
         <div className="flex items-center justify-between sm:justify-start gap-3 pointer-events-auto">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#08152C]/90 border border-sky-400/35 flex items-center justify-center shadow-[0_0_15px_rgba(56,189,248,0.15)]">
-              <Compass className="w-4 h-4 text-sky-400" aria-hidden="true" />
-            </div>
-            <div>
-              <h1 className="font-display text-base sm:text-lg font-semibold tracking-wider text-[#F4F7FB] leading-none">
-                Beyond the Mission
-              </h1>
-              <p className="text-[11px] text-slate-400 tracking-wide mt-0.5">
-                Exploração Espacial Interativa
-              </p>
-            </div>
+          <div className="flex items-center">
+            <img
+              src="/logo-header.png"
+              alt="Beyond the Mission — Exploração Espacial Interativa"
+              title="Beyond the Mission — Exploração Espacial Interativa"
+              className="h-11 sm:h-14 w-auto object-contain select-none pointer-events-none drop-shadow-[0_0_14px_rgba(255,255,255,0.18)]"
+              draggable={false}
+            />
+            <h1 className="sr-only">Beyond the Mission — Exploração Espacial Interativa</h1>
           </div>
 
           {/* Controle de áudio visível no canto direito no mobile */}

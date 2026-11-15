@@ -1,7 +1,12 @@
 import React, { MutableRefObject, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
-import { CelestialBodyId, SlotAssignmentMap, TravelPhase } from '../../types/experience';
+import {
+  CelestialBodyId,
+  SlotAssignmentMap,
+  SpaceArtifactId,
+  TravelPhase,
+} from '../../types/experience';
 
 export interface TravelRuntimeState {
   isTraveling: boolean;
@@ -14,6 +19,10 @@ export interface TravelRuntimeState {
   toId: CelestialBodyId;
   fromSlots: SlotAssignmentMap;
   toSlots: SlotAssignmentMap;
+  /** Quando definido, a viagem em velocidade da luz leva o usuário ao objeto 3D (ou retorna dele) */
+  targetArtifactId?: SpaceArtifactId | null;
+  /** Indica salto estilo Star Wars Hyperdrive rumo a um artefato 3D */
+  isArtifactJump?: boolean;
 }
 
 interface HyperspaceTransitionProps {
@@ -21,7 +30,10 @@ interface HyperspaceTransitionProps {
   reducedMotion: boolean;
   streakCount?: number;
   onPhaseChange: (phase: TravelPhase) => void;
-  onTravelComplete: (destinationId: CelestialBodyId) => void;
+  onTravelComplete: (
+    destinationId: CelestialBodyId,
+    targetArtifactId?: SpaceArtifactId | null
+  ) => void;
 }
 
 interface StreakParticle {
@@ -36,18 +48,18 @@ interface StreakParticle {
 export const HyperspaceTransition: React.FC<HyperspaceTransitionProps> = ({
   travelRef,
   reducedMotion,
-  streakCount = 260,
+  streakCount = 520,
   onPhaseChange,
   onTravelComplete,
 }) => {
   const { camera } = useThree();
   const instancedRef = useRef<THREE.InstancedMesh>(null);
+  const tunnelGlowRef = useRef<THREE.Mesh>(null);
   const lastPhaseRef = useRef<TravelPhase>('idle');
 
-  // Objeto auxiliar único pré-alocado para evitar qualquer alocação de memória por quadro
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
-  const { particles, material } = useMemo(() => {
+  const { particles, material, tunnelMaterial } = useMemo(() => {
     const list: StreakParticle[] = [];
     let seed = 9876543;
     const rand = () => {
@@ -56,41 +68,50 @@ export const HyperspaceTransition: React.FC<HyperspaceTransitionProps> = ({
     };
 
     for (let i = 0; i < streakCount; i++) {
-      // Túnel cilíndrico deixando o centro livre para não atravessar diretamente o planeta
+      // Túnel cilíndrico estilo Star Wars Hyperdrive envolvendo toda a visão da câmera
       const angle = rand() * Math.PI * 2;
-      const radius = 2.35 + Math.pow(rand(), 0.78) * 11.5;
+      const radius = 1.05 + Math.pow(rand(), 0.72) * 13.5;
       const x = Math.cos(angle) * radius;
-      const y = Math.sin(angle) * radius * 0.78;
-      const z = -55 + rand() * 62;
-      const speed = 36 + rand() * 38;
-      const thickness = 0.011 + rand() * 0.018;
-      const lengthFactor = 0.65 + rand() * 0.85;
+      const y = Math.sin(angle) * radius * 0.82;
+      const z = -68 + rand() * 75;
+      const speed = 48 + rand() * 56;
+      const thickness = 0.012 + rand() * 0.022;
+      const lengthFactor = 0.75 + rand() * 1.15;
 
       list.push({ x, y, z, speed, thickness, lengthFactor });
     }
 
     const mat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color('#BAE6FD'),
+      color: new THREE.Color('#E0F2FE'),
       transparent: true,
       opacity: 0,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
 
-    return { particles: list, material: mat };
+    const tMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color('#38BDF8'),
+      transparent: true,
+      opacity: 0,
+      side: THREE.BackSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+
+    return { particles: list, material: mat, tunnelMaterial: tMat };
   }, [streakCount]);
 
-  // Inicializa cores variadas (branco, azul-gelo e ciano) uma única vez nas instâncias
+  // Cores estelares estilo Star Wars (branco incandescente, azul-hiperespaço e ciano)
   React.useLayoutEffect(() => {
     const mesh = instancedRef.current;
     if (!mesh) return;
 
     const palette = [
-      new THREE.Color('#F8FAFC'),
-      new THREE.Color('#E0F2FE'),
-      new THREE.Color('#7DD3FC'),
+      new THREE.Color('#FFFFFF'),
+      new THREE.Color('#F0F9FF'),
+      new THREE.Color('#BAE6FD'),
       new THREE.Color('#38BDF8'),
-      new THREE.Color('#1D4ED8'),
+      new THREE.Color('#60A5FA'),
     ];
 
     for (let i = 0; i < streakCount; i++) {
@@ -117,19 +138,17 @@ export const HyperspaceTransition: React.FC<HyperspaceTransitionProps> = ({
       if (instancedRef.current) {
         instancedRef.current.visible = false;
       }
+      if (tunnelGlowRef.current) {
+        tunnelGlowRef.current.visible = false;
+      }
       return;
     }
 
-    // Avança o tempo de viagem com delta limitado para evitar saltos se a aba perder foco
     const safeDelta = Math.min(delta, 0.05);
     state.elapsed += safeDelta;
     const rawProgress = Math.min(1, state.elapsed / state.duration);
     state.progress = rawProgress;
 
-    // Determina as 3 etapas da viagem:
-    // 1. Aceleração (0.00 - 0.27)
-    // 2. Viagem em alta velocidade (0.27 - 0.72)
-    // 3. Chegada e acomodação suave (0.72 - 1.00)
     let nextPhase: TravelPhase = 'acceleration';
     if (rawProgress >= 0.72) {
       nextPhase = 'arrival';
@@ -144,66 +163,70 @@ export const HyperspaceTransition: React.FC<HyperspaceTransitionProps> = ({
     }
 
     if (reducedMotion) {
-      // Modo Movimento Reduzido: sem rastros luminosos nem distorção de FOV
       state.warpIntensity = 0;
       if (instancedRef.current) {
         instancedRef.current.visible = false;
       }
+      if (tunnelGlowRef.current) {
+        tunnelGlowRef.current.visible = false;
+      }
     } else {
-      // Calcula curva suave de intensidade do hiperespaço nas 3 fases
       let warp = 0;
       if (rawProgress < 0.27) {
-        // Fase 1: Aceleração suave (easeInCubic)
         const t = rawProgress / 0.27;
         warp = t * t * (3 - 2 * t);
       } else if (rawProgress < 0.72) {
-        // Fase 2: Viagem em velocidade máxima constante com leve modulação
         warp = 1.0;
       } else {
-        // Fase 3: Chegada e desaceleração suave (easeOutCubic)
         const t = (rawProgress - 0.72) / 0.28;
         const easeOut = 1 - Math.pow(1 - t, 3);
         warp = Math.max(0, 1 - easeOut);
       }
 
       state.warpIntensity = warp;
+      const isJump = Boolean(state.isArtifactJump);
 
-      // Variação sutil e cinematográfica de FOV durante o salto espacial
-      const targetFov = 42 + warp * 2.8;
-      perspCam.fov = THREE.MathUtils.damp(perspCam.fov, targetFov, 6.5, safeDelta);
+      // Efeito de câmera estilo salto na velocidade da luz (Star Wars Hyperdrive)
+      const fovBoost = isJump ? 13.5 : 4.2;
+      const targetFov = 42 + warp * fovBoost;
+      perspCam.fov = THREE.MathUtils.damp(perspCam.fov, targetFov, 8.0, safeDelta);
       perspCam.updateProjectionMatrix();
 
-      // Atualiza rastros luminosos 3D
       const mesh = instancedRef.current;
       if (mesh) {
         mesh.visible = warp > 0.005;
-        material.opacity = Math.min(0.82, warp * 0.82);
+        material.opacity = Math.min(0.96, warp * (isJump ? 0.96 : 0.85));
 
-        const speedMultiplier = 0.15 + warp * 1.65;
-        // Na aceleração as estrelas começam a se alongar; na viagem atingem comprimento máximo; na chegada encolhem
-        const streakStretch = 0.04 + Math.pow(warp, 1.35) * 5.6;
+        const speedMultiplier = (isJump ? 0.35 : 0.18) + warp * (isJump ? 2.75 : 1.75);
+        // No salto para artefatos, as estrelas se esticam em longos feixes de luz estilo Star Wars
+        const streakStretch = 0.05 + Math.pow(warp, 1.25) * (isJump ? 18.5 : 7.2);
 
         for (let i = 0; i < streakCount; i++) {
           const p = particles[i];
           p.z += p.speed * speedMultiplier * safeDelta;
-          if (p.z > 7.5) {
-            p.z -= 62;
+          if (p.z > 8.0) {
+            p.z -= 72;
           }
 
           dummy.position.set(p.x, p.y, p.z);
           dummy.scale.set(
-            p.thickness,
-            p.thickness,
-            Math.max(0.03, streakStretch * p.lengthFactor)
+            p.thickness * (isJump ? 1.25 : 1.0),
+            p.thickness * (isJump ? 1.25 : 1.0),
+            Math.max(0.04, streakStretch * p.lengthFactor)
           );
           dummy.updateMatrix();
           mesh.setMatrixAt(i, dummy.matrix);
         }
         mesh.instanceMatrix.needsUpdate = true;
       }
+
+      if (tunnelGlowRef.current) {
+        tunnelGlowRef.current.visible = isJump && warp > 0.05;
+        tunnelMaterial.opacity = isJump ? Math.pow(warp, 1.6) * 0.16 : 0;
+        tunnelGlowRef.current.rotation.z += safeDelta * 1.8;
+      }
     }
 
-    // Finaliza a viagem ao atingir 100%
     if (rawProgress >= 1) {
       state.isTraveling = false;
       state.warpIntensity = 0;
@@ -212,20 +235,25 @@ export const HyperspaceTransition: React.FC<HyperspaceTransitionProps> = ({
       if (instancedRef.current) {
         instancedRef.current.visible = false;
       }
-      onTravelComplete(state.toId);
+      if (tunnelGlowRef.current) {
+        tunnelGlowRef.current.visible = false;
+      }
+      onTravelComplete(state.toId, state.targetArtifactId);
     }
   });
 
   return (
-    <instancedMesh
-      ref={instancedRef}
-      args={[undefined, undefined, streakCount]}
-      material={material}
-      visible={false}
-      frustumCulled={false}
-      raycast={() => null}
-    >
-      <boxGeometry args={[1, 1, 1]} />
-    </instancedMesh>
+    <group name="hyperspace-starwars-effect">
+      <instancedMesh
+        ref={instancedRef}
+        args={[undefined, undefined, streakCount]}
+        material={material}
+        visible={false}
+        frustumCulled={false}
+        raycast={() => null}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+      </instancedMesh>
+    </group>
   );
 };

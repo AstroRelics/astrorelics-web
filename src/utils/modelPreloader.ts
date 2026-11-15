@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader, GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { CELESTIAL_BODIES, CELESTIAL_BODY_ORDER } from '../config/celestialBodies';
-import { CelestialBodyConfig, CelestialBodyId } from '../types/experience';
+import { SPACE_ARTIFACTS, SPACE_ARTIFACT_ORDER } from '../config/spaceArtifacts';
+import { CelestialBodyConfig, CelestialBodyId, SpaceArtifactId } from '../types/experience';
 
 export interface LoadedCelestialAsset {
   id: CelestialBodyId;
@@ -219,5 +220,135 @@ export async function preloadAllCelestialModels(
     assets: finalAssets,
   });
 
+  // Inicia aquecimento em segundo plano dos 5 modelos 3D de artefatos após liberar a cena principal
+  setTimeout(() => {
+    void preloadAllSpaceArtifacts();
+  }, 1800);
+
   return finalAssets;
+}
+
+const artifactCache: Partial<Record<SpaceArtifactId, THREE.Group>> = {};
+const artifactInFlight: Partial<Record<SpaceArtifactId, Promise<THREE.Group>>> = {};
+
+/**
+ * Normaliza um modelo GLB de artefato espacial para raio unitário (R = 1.0) centrado na origem (0,0,0),
+ * preservando integralmente as propriedades PBR originais (metalness, roughness, texturas e cores) de cada peça.
+ */
+function buildNormalizedArtifactGroup(gltf: GLTF, id: SpaceArtifactId): THREE.Group {
+  const root = gltf.scene.clone(true);
+  root.updateMatrixWorld(true);
+
+  const box = new THREE.Box3().setFromObject(root);
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  box.getSize(size);
+  box.getCenter(center);
+
+  const maxDimension = Math.max(size.x, size.y, size.z);
+  const currentRadius = maxDimension > 0.0001 ? maxDimension * 0.5 : 1.0;
+  const normalizeScale = 1.0 / currentRadius;
+
+  root.traverse((child) => {
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+
+      if (mesh.geometry && !mesh.geometry.attributes.normal) {
+        mesh.geometry.computeVertexNormals();
+      }
+
+      const tuneArtifactMaterial = (mat: THREE.Material): THREE.Material => {
+        const cloned = mat.clone();
+        if (
+          cloned instanceof THREE.MeshStandardMaterial ||
+          cloned instanceof THREE.MeshPhysicalMaterial
+        ) {
+          if (cloned.map) {
+            cloned.map.colorSpace = THREE.SRGBColorSpace;
+            cloned.map.anisotropy = 8;
+          }
+          if (cloned.normalMap) {
+            cloned.normalMap.anisotropy = 8;
+          }
+          if (cloned.roughnessMap) {
+            cloned.roughnessMap.anisotropy = 8;
+          }
+          if (cloned.metalnessMap) {
+            cloned.metalnessMap.anisotropy = 8;
+          }
+          cloned.needsUpdate = true;
+        }
+        return cloned;
+      };
+
+      if (Array.isArray(mesh.material)) {
+        mesh.material = mesh.material.map(tuneArtifactMaterial);
+      } else if (mesh.material) {
+        mesh.material = tuneArtifactMaterial(mesh.material);
+      }
+    }
+  });
+
+  root.position.set(
+    -center.x * normalizeScale,
+    -center.y * normalizeScale,
+    -center.z * normalizeScale
+  );
+  root.scale.setScalar(normalizeScale);
+
+  const wrapper = new THREE.Group();
+  wrapper.name = `normalized-artifact-${id}`;
+  wrapper.add(root);
+  return wrapper;
+}
+
+/**
+ * Carrega (ou retorna do cache) o modelo 3D normalizado de um artefato espacial específico.
+ */
+export async function loadSpaceArtifactModel(id: SpaceArtifactId): Promise<THREE.Group> {
+  if (artifactCache[id]) {
+    return artifactCache[id]!;
+  }
+  if (artifactInFlight[id]) {
+    return artifactInFlight[id]!;
+  }
+
+  const config = SPACE_ARTIFACTS[id];
+  const loader = new GLTFLoader();
+
+  const promise = new Promise<THREE.Group>((resolve, reject) => {
+    loader.load(
+      config.modelPath,
+      (gltf) => {
+        const group = buildNormalizedArtifactGroup(gltf, id);
+        artifactCache[id] = group;
+        delete artifactInFlight[id];
+        resolve(group);
+      },
+      undefined,
+      (err) => {
+        delete artifactInFlight[id];
+        reject(err);
+      }
+    );
+  });
+
+  artifactInFlight[id] = promise;
+  return promise;
+}
+
+/**
+ * Pré-carrega silenciosamente em segundo plano os modelos 3D dos 5 artefatos para que
+ * a transição em velocidade da luz exiba o objeto 3D imediatamente ao chegar.
+ */
+export async function preloadAllSpaceArtifacts(): Promise<void> {
+  for (const id of SPACE_ARTIFACT_ORDER) {
+    try {
+      await loadSpaceArtifactModel(id);
+    } catch {
+      // Silencioso no pré-carregamento em background
+    }
+  }
 }

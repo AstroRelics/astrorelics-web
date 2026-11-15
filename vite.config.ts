@@ -31,7 +31,7 @@ function serve3DModelsPlugin() {
             const stat = fs.statSync(filePath);
             res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
             res.setHeader('Content-Length', stat.size);
-            res.setHeader('Cache-Control', 'public, max-age=3600');
+            res.setHeader('Cache-Control', 'no-cache');
             if (req.method === 'HEAD') {
               res.statusCode = 200;
               res.end();

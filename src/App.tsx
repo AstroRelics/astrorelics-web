@@ -1,13 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { SPACE_ARTIFACTS } from './config/spaceArtifacts';
 import {
   CelestialBodyId,
   ExperienceState,
+  SpaceArtifactId,
   TravelPhase,
   ViewportTier,
 } from './types/experience';
 import {
   LoadedCelestialAsset,
+  loadSpaceArtifactModel,
   preloadAllCelestialModels,
 } from './utils/modelPreloader';
 import {
@@ -46,14 +49,13 @@ function getViewportTier(width: number): ViewportTier {
 export const App: React.FC = () => {
   const [webglSupported] = useState<boolean>(() => checkWebGLSupport());
 
-  // Estados principais da experiência: carregamento, exploração, viagem e erro
   const [experienceState, setExperienceState] = useState<ExperienceState>('loading');
-  const [selectedId, setSelectedId] = useState<CelestialBodyId>('earth'); // Inicia com a Terra selecionada
+  const [selectedId, setSelectedId] = useState<CelestialBodyId>('earth');
   const [highlightedId, setHighlightedId] = useState<CelestialBodyId | null>(null);
   const [targetTravelId, setTargetTravelId] = useState<CelestialBodyId | null>(null);
   const [travelPhase, setTravelPhase] = useState<TravelPhase>('idle');
+  const [activeArtifactId, setActiveArtifactId] = useState<SpaceArtifactId | null>(null);
 
-  // Progresso de pré-carregamento dos modelos 3D
   const [loadProgress, setLoadProgress] = useState<number>(0);
   const [loadStatusLabel, setLoadStatusLabel] = useState<string>('Inicializando telemetria...');
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -61,10 +63,8 @@ export const App: React.FC = () => {
     Partial<Record<CelestialBodyId, LoadedCelestialAsset>>
   >({});
 
-  // Áudio inicia estritamente desativado
   const [audioEnabled, setAudioEnabled] = useState<boolean>(false);
 
-  // Responsividade e preferência de movimento reduzido do sistema
   const [viewportTier, setViewportTier] = useState<ViewportTier>(() =>
     typeof window !== 'undefined' ? getViewportTier(window.innerWidth) : 'desktop'
   );
@@ -74,7 +74,6 @@ export const App: React.FC = () => {
       : false
   );
 
-  // Refs mutáveis para animação 60fps sem re-renderizar a interface React a cada quadro
   const dragStateRef = useRef<ExplorationDragState>({
     userRotationOffset: new THREE.Vector2(0, 0),
     targetRotationOffset: new THREE.Vector2(0, 0),
@@ -87,7 +86,7 @@ export const App: React.FC = () => {
   const travelRef = useRef<TravelRuntimeState>({
     isTraveling: false,
     elapsed: 0,
-    duration: 2.85,
+    duration: 1.55,
     progress: 0,
     warpIntensity: 0,
     phase: 'idle',
@@ -95,9 +94,10 @@ export const App: React.FC = () => {
     toId: 'earth',
     fromSlots: { ...INITIAL_SLOT_ASSIGNMENTS },
     toSlots: { ...INITIAL_SLOT_ASSIGNMENTS },
+    targetArtifactId: null,
+    isArtifactJump: false,
   });
 
-  // Monitora redimensionamento e preferência de movimento reduzido do sistema
   useEffect(() => {
     const handleResize = () => {
       setViewportTier(getViewportTier(window.innerWidth));
@@ -116,7 +116,6 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Executa o pré-carregamento dos modelos 3D antes de liberar a exploração
   const runPreload = useCallback(async (force = false) => {
     setExperienceState('loading');
     setLoadProgress(0);
@@ -148,7 +147,6 @@ export const App: React.FC = () => {
     }
   }, [webglSupported, runPreload]);
 
-  // Caso ocorra erro de rede/arquivo e o usuário opte por continuar com esferas provisórias
   const handleContinueWithProvisional = useCallback(() => {
     setLoadedAssets({
       earth: { id: 'earth', source: 'provisional-sphere', resolvedPath: null, normalizedGroup: null },
@@ -159,7 +157,6 @@ export const App: React.FC = () => {
     setExperienceState('exploring');
   }, []);
 
-  // Destaca um corpo ao fundo (clique simples)
   const handleHighlightBody = useCallback((id: CelestialBodyId | null) => {
     setHighlightedId((prev) => {
       if (id && id !== prev) {
@@ -169,7 +166,6 @@ export const App: React.FC = () => {
     });
   }, []);
 
-  // Restaura a orientação inicial da visualização do corpo selecionado
   const handleResetOrientation = useCallback(() => {
     if (experienceState !== 'exploring') return;
     dragStateRef.current.targetRotationOffset.set(0, 0);
@@ -177,26 +173,33 @@ export const App: React.FC = () => {
     soundEffects.playResetTone();
   }, [experienceState]);
 
-  // Inicia a viagem espacial para outro corpo celeste (via clique duplo ao fundo ou seletor)
+  // Inicia viagem espacial para outro corpo celeste (ou retorna de um artefato 3D para o planeta)
   const handleInitiateTravel = useCallback(
     (destinationId: CelestialBodyId) => {
-      // Bloqueia novas trocas enquanto uma viagem já estiver acontecendo ou se já for o corpo atual
-      if (
-        experienceState !== 'exploring' ||
-        travelRef.current.isTraveling ||
-        destinationId === selectedId
-      ) {
+      if (experienceState !== 'exploring' || travelRef.current.isTraveling) {
         return;
       }
 
-      const duration = reducedMotion ? 1.25 : 2.85;
+      // Se já estamos nesse planeta e apenas fechando um artefato 3D, retorna imediatamente com suavidade
+      if (destinationId === selectedId && activeArtifactId !== null) {
+        dragStateRef.current.targetRotationOffset.set(0, 0);
+        dragStateRef.current.userRotationOffset.set(0, 0);
+        parallaxOffsetRef.current.set(0, 0);
+        setActiveArtifactId(null);
+        soundEffects.playResetTone();
+        return;
+      }
 
-      // Reinicia suavemente a orientação acumulada para apresentar a face principal do novo destino
+      if (destinationId === selectedId && activeArtifactId === null) {
+        return;
+      }
+
+      const duration = reducedMotion ? 0.65 : 1.35;
+
       dragStateRef.current.targetRotationOffset.set(0, 0);
       dragStateRef.current.userRotationOffset.set(0, 0);
       parallaxOffsetRef.current.set(0, 0);
 
-      // Gira os 3 astros em conjunto em 120° ao longo do anel orbital 3D
       const currentSlots = { ...travelRef.current.toSlots };
       const { nextSlots } = computeRotatedSlotAssignments(currentSlots, destinationId);
 
@@ -211,8 +214,11 @@ export const App: React.FC = () => {
         toId: destinationId,
         fromSlots: currentSlots,
         toSlots: nextSlots,
+        targetArtifactId: null,
+        isArtifactJump: false,
       };
 
+      setActiveArtifactId(null);
       setHighlightedId(null);
       setTargetTravelId(destinationId);
       setTravelPhase('acceleration');
@@ -224,18 +230,83 @@ export const App: React.FC = () => {
         soundEffects.playHighlightPing();
       }
     },
-    [experienceState, selectedId, reducedMotion]
+    [experienceState, selectedId, activeArtifactId, reducedMotion]
   );
 
-  // Conclui a viagem e restaura os controles de exploração
-  const handleTravelComplete = useCallback((destinationId: CelestialBodyId) => {
-    setSelectedId(destinationId);
-    setTargetTravelId(null);
-    setTravelPhase('idle');
-    setExperienceState('exploring');
-  }, []);
+  // Inicia salto na velocidade da luz estilo Star Wars rumo ao objeto 3D selecionado
+  const handleSelectArtifact = useCallback(
+    (artifactId: SpaceArtifactId) => {
+      if (
+        experienceState !== 'exploring' ||
+        travelRef.current.isTraveling ||
+        activeArtifactId === artifactId
+      ) {
+        return;
+      }
 
-  // Alterna ativação de efeitos sonoros
+      // Garante que o modelo 3D esteja carregando/em cache imediatamente
+      void loadSpaceArtifactModel(artifactId);
+
+      const artifact = SPACE_ARTIFACTS[artifactId];
+      const destinationBodyId = artifact.relatedBodyId;
+      const duration = reducedMotion ? 0.55 : 0.85;
+
+      dragStateRef.current.targetRotationOffset.set(0, 0);
+      dragStateRef.current.userRotationOffset.set(0, 0);
+      parallaxOffsetRef.current.set(0, 0);
+
+      const currentSlots = { ...travelRef.current.toSlots };
+      const { nextSlots } = computeRotatedSlotAssignments(currentSlots, destinationBodyId);
+
+      travelRef.current = {
+        isTraveling: true,
+        elapsed: 0,
+        duration,
+        progress: 0,
+        warpIntensity: 0,
+        phase: 'acceleration',
+        fromId: selectedId,
+        toId: destinationBodyId,
+        fromSlots: currentSlots,
+        toSlots: nextSlots,
+        targetArtifactId: artifactId,
+        isArtifactJump: true,
+      };
+
+      setHighlightedId(null);
+      setTargetTravelId(destinationBodyId);
+      setTravelPhase('acceleration');
+      setExperienceState('traveling');
+
+      if (!reducedMotion) {
+        soundEffects.playHyperspaceTravel(duration);
+      } else {
+        soundEffects.playHighlightPing();
+      }
+    },
+    [experienceState, selectedId, activeArtifactId, reducedMotion]
+  );
+
+  const handleCloseArtifact = useCallback(() => {
+    if (experienceState !== 'exploring') return;
+    dragStateRef.current.targetRotationOffset.set(0, 0);
+    dragStateRef.current.userRotationOffset.set(0, 0);
+    parallaxOffsetRef.current.set(0, 0);
+    setActiveArtifactId(null);
+    soundEffects.playResetTone();
+  }, [experienceState]);
+
+  const handleTravelComplete = useCallback(
+    (destinationId: CelestialBodyId, targetArtifactId?: SpaceArtifactId | null) => {
+      setSelectedId(destinationId);
+      setActiveArtifactId(targetArtifactId ?? null);
+      setTargetTravelId(null);
+      setTravelPhase('idle');
+      setExperienceState('exploring');
+    },
+    []
+  );
+
   const handleToggleAudio = useCallback(() => {
     const next = soundEffects.setEnabled(!audioEnabled);
     setAudioEnabled(next);
@@ -247,7 +318,6 @@ export const App: React.FC = () => {
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-[#02040A]">
-      {/* Tela de carregamento com indicação de progresso e tratamento de erro */}
       {(experienceState === 'loading' || experienceState === 'error') && (
         <LoadingScreen
           progress={loadProgress}
@@ -259,10 +329,10 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Cena 3D ocupando toda a tela */}
       <SpaceExperienceCanvas
         selectedId={selectedId}
         highlightedId={highlightedId}
+        activeArtifactId={activeArtifactId}
         experienceState={experienceState}
         viewportTier={viewportTier}
         reducedMotion={reducedMotion}
@@ -272,11 +342,11 @@ export const App: React.FC = () => {
         travelRef={travelRef}
         onHighlightBody={handleHighlightBody}
         onInitiateTravel={handleInitiateTravel}
+        onSelectArtifact={handleSelectArtifact}
         onTravelPhaseChange={setTravelPhase}
         onTravelComplete={handleTravelComplete}
       />
 
-      {/* Cabeçalho minimalista: Nome do projeto, Seletor (Terra, Lua, Marte) e Controle de Áudio */}
       <HeaderHud
         selectedId={selectedId}
         targetTravelId={targetTravelId}
@@ -288,14 +358,16 @@ export const App: React.FC = () => {
         onToggleAudio={handleToggleAudio}
       />
 
-      {/* Painel discreto do corpo selecionado, botão de restaurar orientação e instrução */}
       <DestinationInfoPanel
         selectedId={selectedId}
         highlightedId={highlightedId}
+        activeArtifactId={activeArtifactId}
         experienceState={experienceState}
         loadedAsset={loadedAssets[selectedId]}
         onResetOrientation={handleResetOrientation}
         onTravelToHighlighted={handleInitiateTravel}
+        onSelectArtifact={handleSelectArtifact}
+        onCloseArtifact={handleCloseArtifact}
       />
     </div>
   );
