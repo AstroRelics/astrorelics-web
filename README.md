@@ -1,58 +1,75 @@
-# 🚀 Beyond the Mission: Forensic Space Investigation
-> **Abandoned but not Forgotten: Storytelling about NASA's Discarded Equipment on the Moon and Mars**
+# 🚀 Beyond the Mission
+> **Abandoned but not Forgotten: Exploração 3D interativa de artefatos históricos da NASA na Terra, na Lua, em Marte e no espaço profundo.**
 
 <p align="center">
   <img src="./logo.png" alt="Beyond the Mission Logo" width="220" />
 </p>
 
-Plataforma educativa e investigativa gamificada baseada no método científico e em dados e telemetria abertos da NASA. Em vez de um simples mapa estático, **Beyond the Mission** transforma estudantes e entusiastas em investigadores forenses espaciais, decifrando o destino de equipamentos esquecidos e separando fatos científicos comprovados de especulação e hipóteses.
+**Beyond the Mission** é uma experiência web interativa em 3D que transforma a história da exploração espacial em uma jornada visual navegável. Em vez de um catálogo estático, o usuário viaja pelo corredor orbital **Terra–Lua–Marte**, alternando entre astros com transições orbitais suaves e inspecionando em 3D cinco equipamentos históricos deixados — ou perdidos e redescobertos — pela NASA.
 
 ---
 
-## 🎯 Visão Geral do Projeto
+## 🌌 O que o Projeto Oferece
 
-A exploração espacial deixou marcos históricos na Lua e em Marte. Muitos desses artefatos foram considerados perdidos, outros encerraram seus ciclos após eventos climáticos extremos e alguns continuam operando de forma passiva após décadas.
-
-**Beyond the Mission** resolve o *"problema do deserto cinza"* e a superficialidade dos catálogos convencionais através de:
-- **Terminal Forense de Telemetria:** Acesso a gráficos reais (opacidade atmosférica, curvas de voltagem, logs de erro, últimas imagens corrompidas).
-- **Mesa de Dedução Epistemológica:** Classificação de evidências entre *Fato Comprovado*, *Hipótese Provável*, *Dado Insuficiente / Inconclusivo* e *Mito / Ficção*.
-- **Laboratórios de Simulação Física:** Experimentação interativa simplificada para validar as hipóteses (ex: relação poeira solar vs. bateria, medição laser LLR).
-- **Relatório de Missão do Aluno / Modo Docente:** Geração de diagnósticos de raciocínio científico para uso em salas de aula (sessões de 15 minutos).
+- **Navegação Orbital 3D & Salto Hiperespacial:** Viaje entre **Terra**, **Lua** e **Marte** com transições orbitais calculadas sem colisão, campo estelar, nebulosa, iluminação espacial e efeito visual de hiperespaço.
+- **Inspeção Interativa de Artefatos Espaciais:** Selecione artefatos posicionados no espaço profundo ou ancorados nas coordenadas reais da superfície lunar e marciana para inspecionar seus modelos 3D em detalhe.
+- **Painel de Contexto Científico e Histórico:** Para cada destino e artefato, o painel lateral exibe status da missão, localização/coordenadas, ficha técnica, descrição de engenharia, história da missão e importância científica.
+- **Feedback Sonoro & Responsividade:** Efeitos sonoros espaciais sintetizados, HUD adaptativa para desktop, tablet e mobile, tela de carregamento com progresso de pré-carregamento dos modelos `.glb` e fallback automático caso WebGL não esteja disponível.
 
 ---
 
-## 🔬 Os 3 Casos Piloto
+## 🪐 Corpos Celestes & Artefatos 3D
 
-1. **Morte em Combate — Rover Opportunity (*Marte, 2018*)**
-   - **Cenário:** O rover silencioso após a maior tempestade de poeira global da década em Marte.
-   - **Evidências:** Medições reais de opacidade *Tau*, curva de descarga da bateria e a última foto de transmissão parcial de 10 de junho de 2018.
-   - **Simulação:** Painel fotovoltaico vs. intensidade de luz e acúmulo de poeira.
+### Corpos Celestes
+| Astro | Modelo 3D |
+| --- | --- |
+| **Terra** | `3d_models/Earth_1_12756.glb` |
+| **Lua** | `3d_models/moon_small.glb` |
+| **Marte** | `3d_models/24881_Mars_1_6792.glb` |
 
-2. **Abandono Funcional — Retrorefletores Laser Apollo LLR (*Lua, 1969–Presente*)**
-   - **Cenário:** Um instrumento sem fonte de alimentação, sem motor e abandonado há mais de meio século que ainda gera dados científicos diários.
-   - **Evidências:** Dados do CDDIS Lunar Laser Ranging da NASA e medição do distanciamento orbital lunar (3,8 cm/ano).
-   - **Simulação:** Alinhamento de pulso laser Terra-Lua e contagem de tempo de voo de fótons.
-
-3. **Falha Crítica Oculta — Sonda Beagle 2 (*Marte, 2003–2015*)**
-   - **Cenário:** Considerada perdida na reentrada marciana em 2003 até ser redescoberta intacta pela sonda MRO em 2015.
-   - **Evidências:** Imagens em alta resolução da câmera HiRISE e diagramas do mecanismo de desdobramento de pétalas e antena RF.
-   - **Simulação:** Inspeção visual com filtros de contraste e detecção de satélite orbital.
-
----
-
-## 👥 Personas de Referência
-
-- **Beatriz (16 anos — Investigadora Científica):** Busca compreender a construção do conhecimento científico; analisa relatórios primários, compara fotografias e defende hipóteses fundamentadas.
-- **Mariana (Professora de Ciências):** Necessita de atividades dinâmicas de 15 minutos que desenvolvam pensamento crítico, distinguindo dados de fake news científicas e avaliando a participação da turma.
+### 5 Artefatos Históricos da NASA
+1. **J002E3 · Estágio S-IVB (Apollo 12)** — *Espaço Profundo (Corredor Terra–Lua)* (`3d_models/j002e3_s_ivb.glb`)
+   - Terceiro estágio do Saturn V lançado em 1969, perdido por 33 anos e redescoberto em 2002 como um suposto asteroide até sua assinatura espectral de tinta TiO₂ revelar sua origem.
+2. **Retrorefletor a Laser LRRR (Apollo 11, 14 e 15)** — *Lua · Mare Tranquillitatis* (`3d_models/apollo_lrrr.glb`)
+   - Matriz óptica passiva de 100 prismas de quartzo instalada em 1969 que segue ativa há mais de 55 anos, permitindo medir o afastamento lunar de 3,8 cm/ano.
+3. **Módulo Lunar "Snoopy" (Apollo 10)** — *Espaço Profundo (Órbita Heliocêntrica)* (`3d_models/apollo_lunar_module.glb`)
+   - Estágio de subida do LM-4 que realizou o ensaio geral do pouso lunar em maio de 1969; única espaçonave tripulada a vagar intacta e desabitada em órbita solar.
+4. **Rover Opportunity (MER-B)** — *Marte · Meridiani Planum* (`3d_models/opportunity_rover.glb`)
+   - Projetado para 90 sóis, operou por quase 15 anos e percorreu 45,16 km em Marte antes de silenciar na tempestade de poeira global de 2018.
+5. **Helicóptero Ingenuity (Mars 2020)** — *Marte · Cratera Jezero* (`3d_models/ingenuity_helicopter.glb`)
+   - Primeira aeronave a realizar voo motorizado e controlado em outro planeta, completando 72 voos entre 2021 e 2024 (frente aos 5 planejados).
 
 ---
 
-## 🛠️ Stack Tecnológica Recomendada
+## 🛠️ Stack Tecnológica
 
-- **Frontend:** React / Vite, Tailwind CSS, TypeScript
-- **Visualização 3D & Mapas:** Three.js / React Three Fiber / `react-globe.gl`
-- **Componentes Interativos:** Lucide Icons, Framer Motion, Recharts / Chart.js para telemetria
-- **Dados & APIs:** NASA Open Data (PDS, HiRISE, CDDIS LLR, Photojournal)
+- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS
+- **Gráficos 3D:** Three.js, React Three Fiber (`@react-three/fiber`), Drei (`@react-three/drei`)
+- **Ícones & UI:** Lucide React (`lucide-react`) + ícones SVG customizados em `src/components/ui/ArtifactCartoonIcons.tsx`
+
+---
+
+## 📁 Estrutura Principal
+
+```text
+beyond_the_mission/
+├── 3d_models/                  # Modelos .glb dos astros e artefatos espaciais
+├── public/                     # Assets estáticos (ex: logo-header.png)
+└── src/
+    ├── components/
+    │   ├── scene/              # Canvas 3D, controles orbitais, transição hiperespacial, iluminação e atores
+    │   └── ui/                 # HUD superior, painel de informações, ícones, loading e fallback WebGL
+    ├── config/
+    │   ├── celestialBodies.ts  # Configuração visual, escala e dados da Terra, Lua e Marte
+    │   └── spaceArtifacts.ts   # Metadados, coordenadas, specs e modelos dos 5 artefatos
+    ├── types/experience.ts     # Tipagens da experiência, astros e artefatos
+    └── utils/
+        ├── modelPreloader.ts   # Pré-carregamento e normalização de bounding box dos .glb
+        ├── orbitalTransitionMath.ts # Cálculo de transição orbital sem colisão
+        └── soundEffects.ts     # Efeitos sonoros da navegação e inspeção
+```
+
+> **Normalização automática de modelos:** O pré-carregador (`src/utils/modelPreloader.ts`) calcula a *Bounding Box* (`THREE.Box3`) de cada `.glb`, centraliza o pivô na origem `(0, 0, 0)` e normaliza o raio antes de aplicar as escalas configuradas em `src/config/celestialBodies.ts` e `src/config/spaceArtifacts.ts`.
 
 ---
 
@@ -75,17 +92,6 @@ npm run build
 
 ---
 
-## 🪐 Onde Inserir e Configurar os Modelos 3D
-
-Os arquivos 3D (`.glb` ou `.gltf`) ficam na pasta **`3d_models/`** na raiz do projeto, e toda a configuração visual, escala e posicionamento está centralizada em **`src/config/celestialBodies.ts`**:
-
-- **Terra:** `3d_models/Earth_1_12756.glb` *(já configurado e carregado)*
-- **Lua:** `3d_models/moon_small.glb` *(já configurado e carregado)*
-- **Marte:** `3d_models/24881_Mars_1_6792.glb` *(já configurado e carregado)*
-
-> **Normalização automática:** O pré-carregador (`src/utils/modelPreloader.ts`) calcula a *Bounding Box* (`THREE.Box3`) de cada modelo `.glb`, centraliza o pivô na origem `(0, 0, 0)` e normaliza seu raio para `1.0` antes de aplicar `foregroundRadius` e `backgroundRadius`.
-
----
-
 ## 📄 Licença
-Distribuído sob a licença MIT. Consulte `LICENSE` para mais informações.
+
+Distribuído sob a licença MIT.
