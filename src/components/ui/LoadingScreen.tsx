@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
 
 interface LoadingScreenProps {
@@ -11,27 +11,24 @@ interface LoadingScreenProps {
 }
 
 /**
- * Parâmetros geométricos exatos (no espaço 1672x941 do logo.png)
- * calibrados para o anel orbital inclinado e para a letra O central.
+ * Dimensões e centro geométrico do novo logo AstroRelics (1376x768)
  */
-const ORBIT_CX = 948;
-const ORBIT_CY = 409;
-const ORBIT_RX = 342;
-const ORBIT_RY = 68;
-const ORBIT_ANGLE_DEG = -26.8;
+const VIEWBOX_W = 1376;
+const VIEWBOX_H = 768;
+const CENTER_X = 688;
+const CENTER_Y = 384;
+
+// Parâmetros da órbita inclinada calibrados para o anel ciano/dourado do AstroRelics
+const ORBIT_CX = 690;
+const ORBIT_CY = 384;
+const ORBIT_RX = 368;
+const ORBIT_RY = 104;
+const ORBIT_ANGLE_DEG = -27.2;
 const ORBIT_ANGLE_RAD = (ORBIT_ANGLE_DEG * Math.PI) / 180;
 
-// Anel secundário harmônico (arco externo direito do logo original)
-const OUTER_ORBIT_CX = 1005;
-const OUTER_ORBIT_CY = 385;
-const OUTER_ORBIT_RX = 278;
-const OUTER_ORBIT_RY = 62;
-const OUTER_ORBIT_ANGLE_DEG = -31.5;
-
-// Centro e raio exatos do anel circular da letra "O" em BEYOND
-const LETTER_O_CX = 919;
-const LETTER_O_CY = 485.8;
-const LETTER_O_R = 52.8;
+// Posição do flare estelar principal no ápice superior direito da arte
+const APEX_FLARE_X = 998;
+const APEX_FLARE_Y = 224;
 
 function getOrbitPoint(thetaRad: number) {
   const cosA = Math.cos(ORBIT_ANGLE_RAD);
@@ -53,15 +50,36 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
   onContinueWithFallback,
   onFinishTransition,
 }) => {
-  // Progresso visual suavizado para garantir que o giro do anel e a barra 0->100% sejam fluidos
   const [visualProgress, setVisualProgress] = useState<number>(0);
-  // Fase de rotação contínua do anel (em radianos)
   const [orbitTheta, setOrbitTheta] = useState<number>(0);
-  // Fade-out suave ao atingir 100%
+  const [elapsedSec, setElapsedSec] = useState<number>(0);
+  const [isEntered, setIsEntered] = useState<boolean>(false);
   const [isExiting, setIsExiting] = useState<boolean>(false);
 
   const targetProgressRef = useRef<number>(progress);
   const finishTriggeredRef = useRef<boolean>(false);
+
+  // Estrelas sutis de fundo com cintilação determinística
+  const ambientStars = useMemo(
+    () => [
+      { cx: 145, cy: 120, r: 1.4, phase: 0.2 },
+      { cx: 290, cy: 615, r: 1.6, phase: 1.5 },
+      { cx: 430, cy: 95, r: 1.2, phase: 2.8 },
+      { cx: 1120, cy: 110, r: 1.7, phase: 0.9 },
+      { cx: 1240, cy: 520, r: 1.4, phase: 2.1 },
+      { cx: 1050, cy: 660, r: 1.3, phase: 3.7 },
+      { cx: 195, cy: 360, r: 1.1, phase: 4.4 },
+      { cx: 1210, cy: 270, r: 1.5, phase: 5.1 },
+    ],
+    []
+  );
+
+  useEffect(() => {
+    const enterTimer = window.requestAnimationFrame(() => {
+      setIsEntered(true);
+    });
+    return () => window.cancelAnimationFrame(enterTimer);
+  }, []);
 
   useEffect(() => {
     targetProgressRef.current = progress;
@@ -79,15 +97,13 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
       const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
       lastTime = now;
 
-      // Velocidade angular do anel: ~1 volta completa a cada 2.1 segundos
-      // Acelera sutilmente conforme o progresso se aproxima de 100%
-      setOrbitTheta((prev) => (prev + dt * 3.05) % (Math.PI * 2));
+      setElapsedSec((prev) => prev + dt);
+      setOrbitTheta((prev) => (prev + dt * 2.45) % (Math.PI * 2));
 
       setVisualProgress((prev) => {
         const target = targetProgressRef.current;
         if (prev >= target) return prev;
-        // Velocidade máxima ~42%/s para que mesmo em cache local a animação do logo dure ~2.4s
-        const maxStep = dt * 42;
+        const maxStep = dt * 44;
         const diff = target - prev;
         const step = Math.min(diff, Math.max(dt * 18, Math.min(maxStep, diff * dt * 5.5)));
         const next = Math.min(target, prev + step);
@@ -111,10 +127,10 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
       finishTriggeredRef.current = true;
       const exitTimer = window.setTimeout(() => {
         setIsExiting(true);
-      }, 180);
+      }, 220);
       const doneTimer = window.setTimeout(() => {
         onFinishTransition?.();
-      }, 720);
+      }, 780);
 
       return () => {
         window.clearTimeout(exitTimer);
@@ -125,49 +141,94 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
 
   const roundedProgress = Math.min(100, Math.max(0, Math.round(visualProgress)));
 
-  // Posição (x, y) da estrela de 4 pontas que gira na ponta do anel orbital
+  // Posições na órbita elíptica
   const starPos = getOrbitPoint(orbitTheta);
-  // Segunda faísca diametralmente oposta no anel
   const secondaryPos = getOrbitPoint(orbitTheta + Math.PI);
 
-  // Quando a estrela passa atrás do "Y" (entre ~192° e ~232°), atenua seu brilho para respeitar a oclusão 3D
-  const normalizedDeg = (((orbitTheta * 180) / Math.PI) % 360 + 360) % 360;
-  const isBehindLetterY = normalizedDeg > 192 && normalizedDeg < 232;
-  const starScale = isBehindLetterY
-    ? 0.35
-    : 0.85 + 0.28 * Math.cos(orbitTheta); // Brilho máximo no ápice superior direito (theta ~ 0)
-  const starOpacity = isBehindLetterY ? 0.2 : 0.98;
+  // Atenuação sutil quando o cometa passa pela parte traseira da órbita
+  const isBackArc = Math.sin(orbitTheta) < -0.15;
+  const starScale = isBackArc ? 0.55 : 0.88 + 0.25 * Math.cos(orbitTheta);
+  const starOpacity = isBackArc ? 0.35 : 0.95;
 
-  // Offset normalizado (0..1000) para os traços SVG com pathLength="1000"
-  // Em SVG <ellipse>, o ponto inicial t=0 fica em (+rx, 0), ou seja, theta = 0 rad.
+  // Fases normalizadas (0..1000) para traços SVG
   const normPhase = (orbitTheta / (Math.PI * 2)) * 1000;
-  const oppositePhase = ((normPhase + 500) % 1000);
+  const oppositePhase = (normPhase + 500) % 1000;
 
-  // Comprimento do arco de progresso (0 a 1000) ao longo do anel orbital
-  const orbitProgressLength = Math.max(15, (visualProgress / 100) * 1000);
+  // Rotações contínuas dos anéis do astrolábio
+  const astrolabeCwDeg = (elapsedSec * 9) % 360;
+  const astrolabeCcwDeg = -(elapsedSec * 14) % 360;
+
+  // Progresso no anel circular do astrolábio (0..1000)
+  const astrolabeProgress = Math.max(12, (visualProgress / 100) * 1000);
+
+  // Respiração luminosa para o flare estelar principal da arte
+  const apexPulse = 0.85 + 0.2 * Math.sin(elapsedSec * 3.2);
+  const apexRotation = (elapsedSec * 12) % 360;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Carregando Beyond the Mission"
-      className={`fixed inset-0 z-50 bg-black flex flex-col items-center justify-center overflow-hidden select-none transition-opacity duration-500 ease-out ${
-        isExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      aria-label="Carregando AstroRelics"
+      className={`fixed inset-0 z-50 bg-[#02040A] flex flex-col items-center justify-center overflow-hidden select-none transition-all duration-700 ease-out ${
+        isExiting
+          ? 'opacity-0 scale-105 pointer-events-none'
+          : isEntered
+          ? 'opacity-100 scale-100'
+          : 'opacity-0 scale-[0.98]'
       }`}
     >
-      {/* Container principal com a arte oficial do logo e o anel orbital animado em SVG */}
-      <div className="relative w-full max-w-[1180px] px-2 sm:px-6 flex flex-col items-center justify-center">
-        <div className="relative w-full aspect-[1672/941] max-h-[72vh] flex items-center justify-center">
+      {/* Fundo espacial contínuo em tela cheia (ciano + dourado suave) */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 75% 65% at 50% 44%, rgba(14, 34, 58, 0.55) 0%, rgba(125, 211, 252, 0.07) 28%, rgba(253, 230, 138, 0.03) 48%, rgba(2, 4, 10, 0.96) 78%, #000000 100%)',
+        }}
+      />
+
+      {/* Campo estelar sutil em tela cheia para integrar toda a viewport */}
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 1600 900"
+        preserveAspectRatio="xMidYMid slice"
+        className="pointer-events-none absolute inset-0 w-full h-full"
+      >
+        {ambientStars.map((star, idx) => {
+          const twinkle = 0.2 + 0.8 * (0.5 + 0.5 * Math.sin(elapsedSec * 2.1 + star.phase));
+          const sx = (star.cx / VIEWBOX_W) * 1600;
+          const sy = (star.cy / VIEWBOX_H) * 900;
+          return (
+            <circle
+              key={`bg-${idx}`}
+              cx={sx}
+              cy={sy}
+              r={star.r}
+              fill={idx % 2 === 0 ? '#E0F2FE' : '#FEF3C7'}
+              opacity={twinkle * 0.6}
+            />
+          );
+        })}
+      </svg>
+
+      {/* Container principal com a arte oficial AstroRelics e camadas animadas em SVG */}
+      <div className="relative w-full max-w-[1140px] px-2 sm:px-6 flex flex-col items-center justify-center">
+        <div
+          className={`relative w-full aspect-[1376/768] max-h-[70vh] flex items-center justify-center transition-transform duration-1000 ease-out ${
+            isEntered ? 'scale-100' : 'scale-95'
+          }`}
+        >
           <svg
-            viewBox="0 0 1672 941"
+            viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
             className="w-full h-full overflow-visible"
             aria-hidden="true"
           >
             <defs>
-              {/* Filtro de brilho estelar para o anel giratório e a estrela de 4 pontas */}
-              <filter id="orbitalGlow" x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur stdDeviation="5.5" result="blur1" />
-                <feGaussianBlur stdDeviation="14" result="blur2" />
+              {/* Glow intenso para o flare estelar e partículas */}
+              <filter id="astroStarGlow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="4.5" result="blur1" />
+                <feGaussianBlur stdDeviation="12" result="blur2" />
                 <feMerge>
                   <feMergeNode in="blur2" />
                   <feMergeNode in="blur1" />
@@ -175,296 +236,117 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
                 </feMerge>
               </filter>
 
-              <filter id="softRingGlow" x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="3.2" result="blur" />
+              <filter id="astroSoftGlow" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
                 <feMerge>
                   <feMergeNode in="blur" />
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
 
-              {/* Gradiente luminoso para o anel de progresso */}
-              <linearGradient id="orbitProgressGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#94A3B8" stopOpacity="0.35" />
-                <stop offset="50%" stopColor="#E2E8F0" stopOpacity="0.85" />
-                <stop offset="85%" stopColor="#FFFFFF" stopOpacity="1" />
-                <stop offset="100%" stopColor="#7DD3FC" stopOpacity="1" />
+              {/* Gradiente dual-tone ciano -> dourado fiel à identidade AstroRelics */}
+              <linearGradient id="astroCyanGoldGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#7DD3FC" stopOpacity="0.95" />
+                <stop offset="50%" stopColor="#E0F2FE" stopOpacity="1" />
+                <stop offset="100%" stopColor="#FDE68A" stopOpacity="0.95" />
               </linearGradient>
 
-              {/* ClipPaths no sistema local da elipse para separar metade traseira (v <= 0) e frontal (v >= 0) */}
-              <clipPath id="orbitBackHalfClip">
-                <rect x="-420" y="-160" width="840" height="160" />
+              {/* ClipPaths para profundidade da órbita frente/trás */}
+              <clipPath id="astroOrbitBackClip">
+                <rect x="-440" y="-170" width="880" height="170" />
               </clipPath>
-              <clipPath id="orbitFrontHalfClip">
-                <rect x="-420" y="0" width="840" height="160" />
+              <clipPath id="astroOrbitFrontClip">
+                <rect x="-440" y="0" width="880" height="170" />
               </clipPath>
 
-              {/* Máscara para o anel circular da letra O, preservando o canal diagonal onde a órbita corta o O */}
-              <mask id="letterOSplitMask">
-                <rect x="830" y="400" width="180" height="180" fill="white" />
-                <path
-                  d="M 845 530 Q 925 495 1005 446"
-                  fill="none"
-                  stroke="black"
-                  strokeWidth="17"
-                  strokeLinecap="round"
-                />
-              </mask>
-
-              {/* Vinheta suave nas bordas para fundir a imagem 1672x941 perfeitamente ao fundo #000000 */}
-              <radialGradient id="edgeVignette" cx="50%" cy="50%" r="52%">
-                <stop offset="78%" stopColor="black" stopOpacity="0" />
-                <stop offset="100%" stopColor="black" stopOpacity="1" />
+              {/* Máscara radial suave para evitar qualquer borda retangular da imagem */}
+              <radialGradient id="astroLogoFadeGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="58%" stopColor="white" stopOpacity="1" />
+                <stop offset="86%" stopColor="white" stopOpacity="0.65" />
+                <stop offset="100%" stopColor="white" stopOpacity="0" />
               </radialGradient>
+              <mask id="astroLogoMask">
+                <rect x="0" y="0" width={VIEWBOX_W} height={VIEWBOX_H} fill="url(#astroLogoFadeGrad)" />
+              </mask>
             </defs>
 
-            {/* 1. Imagem original de alta resolução do logo */}
+            {/* 1. Anéis externos de astrolábio girando atrás da arte */}
+            <g transform={`translate(${CENTER_X}, ${CENTER_Y})`}>
+              {/* Anel externo de telemetria (sentido horário) */}
+              <g transform={`rotate(${astrolabeCwDeg})`}>
+                <circle
+                  cx="0"
+                  cy="0"
+                  r="272"
+                  fill="none"
+                  stroke="rgba(125, 211, 252, 0.22)"
+                  strokeWidth="1.2"
+                  strokeDasharray="6 14"
+                />
+                {/* Marcadores cardeais do astrolábio */}
+                {[0, 90, 180, 270].map((deg) => (
+                  <line
+                    key={deg}
+                    x1="0"
+                    y1="-282"
+                    x2="0"
+                    y2="-262"
+                    stroke="rgba(253, 230, 138, 0.4)"
+                    strokeWidth="1.5"
+                    transform={`rotate(${deg})`}
+                  />
+                ))}
+              </g>
+
+              {/* Anel interno de calibração (sentido anti-horário) */}
+              <g transform={`rotate(${astrolabeCcwDeg})`}>
+                <circle
+                  cx="0"
+                  cy="0"
+                  r="224"
+                  fill="none"
+                  stroke="rgba(253, 230, 138, 0.18)"
+                  strokeWidth="1"
+                  strokeDasharray="24 18 4 18"
+                />
+              </g>
+            </g>
+
+            {/* 2. Imagem oficial AstroRelics integrada com mix-blend-screen e máscara suave */}
             <image
-              href="/logo.png"
+              href="/logo_astrorelics.jpg"
               x="0"
               y="0"
-              width="1672"
-              height="941"
+              width={VIEWBOX_W}
+              height={VIEWBOX_H}
               preserveAspectRatio="xMidYMid meet"
+              mask="url(#astroLogoMask)"
+              style={{ mixBlendMode: 'screen' }}
             />
 
-            {/* 2. Máscara de limpeza cirúrgica (#000000) que oculta o anel estático original da imagem
-                   sem tocar na Lua nem nas letras de BEYOND THE MISSION */}
-            <g fill="none" stroke="#000000" strokeLinecap="round" strokeLinejoin="round">
-              {/* Caixa da estrela estática original no topo direito */}
-              <rect x="1185" y="190" width="145" height="135" fill="#000000" stroke="none" />
-              {/* Arco superior estático original */}
-              <path
-                d="M 820 434 L 860 405 L 900 377 L 940 350 L 980 327 L 1020 307 L 1060 289 L 1100 274 L 1140 262 L 1180 253 L 1220 248 L 1250 248"
-                strokeWidth="28"
-              />
-              {/* Ramo descendente direito estático original (parando acima da letra N) */}
-              <path
-                d="M 1250 255 L 1243 290 L 1225 328 L 1202 362 L 1172 398 L 1145 424"
-                strokeWidth="18"
-              />
-              <rect x="1110" y="415" width="50" height="22" fill="#000000" stroke="none" />
-              <rect x="1110" y="430" width="32" height="28" fill="#000000" stroke="none" />
-              {/* Arco inferior esquerdo estático (abaixo do Y até a entrada do O) */}
-              <path
-                d="M 640 562 L 670 575 L 710 573 L 750 563 L 790 550 L 830 535 L 858 524"
-                strokeWidth="16"
-              />
-              {/* Canal interno da letra O e ponta direita do arco estático */}
-              <path
-                d="M 855 525 L 890 511 L 925 495 L 955 480 L 982 464 L 995 450 L 998 436"
-                strokeWidth="10"
-              />
-              <rect x="988" y="432" width="20" height="25" fill="#000000" stroke="none" />
-            </g>
-
-            {/* 3. Anel secundário harmônico (arco externo direito girando suavemente atrás do N) */}
-            <g transform={`translate(${OUTER_ORBIT_CX}, ${OUTER_ORBIT_CY}) rotate(${OUTER_ORBIT_ANGLE_DEG})`}>
-              <ellipse
+            {/* 4. Arco de progresso circular no astrolábio central */}
+            <g transform={`translate(${CENTER_X}, ${CENTER_Y}) rotate(-90)`}>
+              <circle
                 cx="0"
                 cy="0"
-                rx={OUTER_ORBIT_RX}
-                ry={OUTER_ORBIT_RY}
+                r="272"
                 pathLength={1000}
                 fill="none"
-                stroke="rgba(255, 255, 255, 0.06)"
-                strokeWidth="1.1"
-                strokeDasharray="460 540"
-                strokeDashoffset={220}
-              />
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={OUTER_ORBIT_RX}
-                ry={OUTER_ORBIT_RY}
-                pathLength={1000}
-                fill="none"
-                stroke="rgba(226, 232, 240, 0.38)"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeDasharray="160 840"
-                strokeDashoffset={-normPhase}
-              />
-            </g>
-
-            {/* 4. METADE TRASEIRA DO ANEL ORBITAL PRINCIPAL (passa atrás do Y e sobre a sombra da Lua) */}
-            <g
-              transform={`translate(${ORBIT_CX}, ${ORBIT_CY}) rotate(${ORBIT_ANGLE_DEG})`}
-              clipPath="url(#orbitBackHalfClip)"
-            >
-              {/* Trilha orbital de base sutil */}
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.09)"
-                strokeWidth="1.2"
-              />
-
-              {/* Preenchimento do Loading Progress ao longo do anel orbital */}
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                pathLength={1000}
-                fill="none"
-                stroke="url(#orbitProgressGrad)"
+                stroke="url(#astroCyanGoldGrad)"
                 strokeWidth="2.2"
                 strokeLinecap="round"
-                strokeDasharray={`${orbitProgressLength} 1000`}
-                strokeDashoffset={500}
-                opacity="0.72"
-              />
-
-              {/* Cauda luminosa afilada do anel girando continuamente (Cometa Principal) */}
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                pathLength={1000}
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.18)"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeDasharray="340 660"
-                strokeDashoffset={340 - normPhase}
-              />
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                pathLength={1000}
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.42)"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeDasharray="220 780"
-                strokeDashoffset={220 - normPhase}
-              />
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                pathLength={1000}
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.78)"
-                strokeWidth="3.6"
-                strokeLinecap="round"
-                strokeDasharray="115 885"
-                strokeDashoffset={115 - normPhase}
-                filter="url(#softRingGlow)"
-              />
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                pathLength={1000}
-                fill="none"
-                stroke="#FFFFFF"
-                strokeWidth="4.8"
-                strokeLinecap="round"
-                strokeDasharray="45 955"
-                strokeDashoffset={45 - normPhase}
-                filter="url(#orbitalGlow)"
-              />
-
-              {/* Arco secundário diametralmente oposto para manter o duplo feixe em rotação */}
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                pathLength={1000}
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.25)"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeDasharray="180 820"
-                strokeDashoffset={180 - oppositePhase}
-              />
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                pathLength={1000}
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.65)"
-                strokeWidth="2.8"
-                strokeLinecap="round"
-                strokeDasharray="70 930"
-                strokeDashoffset={70 - oppositePhase}
-              />
-            </g>
-
-            {/* 5. OCLUSORES DE PROFUNDIDADE 3D (Letras Y e N redesenhadas na posição exata para que a
-                   metade traseira da órbita passe fisicamente por trás das letras) */}
-            <polygon
-              points="683,439 705,439 737.5,478 770,439 793,439 746,496 746,535 729,535 729,496"
-              fill="#F1F3F6"
-            />
-            <polygon
-              points="1062,439 1083,439 1148,511 1148,439 1165,439 1165,535 1145,535 1080,463 1080,535 1062,535"
-              fill="#F1F3F6"
-            />
-
-            {/* 6. ANEL CIRCULAR DA LETRA "O" COM GIRO E PROGRESSO SINCRONIZADOS */}
-            <g mask="url(#letterOSplitMask)">
-              {/* Arco de progresso preenchendo o anel circular do O de 0% a 100% */}
-              <circle
-                cx={LETTER_O_CX}
-                cy={LETTER_O_CY}
-                r={LETTER_O_R}
-                pathLength={100}
-                fill="none"
-                stroke="#FFFFFF"
-                strokeWidth="15"
-                strokeLinecap="butt"
-                strokeDasharray={`${Math.max(4, visualProgress)} 100`}
-                transform={`rotate(-90 ${LETTER_O_CX} ${LETTER_O_CY})`}
-                opacity="0.95"
-              />
-              {/* Reflexo orbital girando continuamente sobre o anel da letra O */}
-              <circle
-                cx={LETTER_O_CX}
-                cy={LETTER_O_CY}
-                r={LETTER_O_R}
-                pathLength={1000}
-                fill="none"
-                stroke="#BAE6FD"
-                strokeWidth="15.5"
-                strokeLinecap="round"
-                strokeDasharray="160 840"
-                strokeDashoffset={-normPhase}
-                filter="url(#softRingGlow)"
+                strokeDasharray={`${astrolabeProgress} 1000`}
                 opacity="0.55"
+                filter="url(#astroSoftGlow)"
               />
             </g>
 
-            {/* 7. METADE FRONTAL DO ANEL ORBITAL PRINCIPAL (passa pela frente atravessando o canal da letra O) */}
+            {/* 5. Feixes de energia orbitando na trajetória inclinada (metade traseira) */}
             <g
               transform={`translate(${ORBIT_CX}, ${ORBIT_CY}) rotate(${ORBIT_ANGLE_DEG})`}
-              clipPath="url(#orbitFrontHalfClip)"
+              clipPath="url(#astroOrbitBackClip)"
+              opacity="0.45"
             >
-              {/* Trilha orbital frontal sutil */}
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.14)"
-                strokeWidth="1.4"
-              />
-
-              {/* Preenchimento do Loading Progress no ramo frontal */}
               <ellipse
                 cx="0"
                 cy="0"
@@ -472,168 +354,128 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
                 ry={ORBIT_RY}
                 pathLength={1000}
                 fill="none"
-                stroke="url(#orbitProgressGrad)"
-                strokeWidth="2.6"
+                stroke="url(#astroCyanGoldGrad)"
+                strokeWidth="2.8"
                 strokeLinecap="round"
-                strokeDasharray={`${orbitProgressLength} 1000`}
-                strokeDashoffset={500}
-                opacity="0.9"
-              />
-
-              {/* Cauda luminosa afilada do anel girando continuamente (Cometa Principal) */}
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                pathLength={1000}
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.22)"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeDasharray="340 660"
-                strokeDashoffset={340 - normPhase}
-              />
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                pathLength={1000}
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.52)"
-                strokeWidth="2.6"
-                strokeLinecap="round"
-                strokeDasharray="220 780"
-                strokeDashoffset={220 - normPhase}
-              />
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                pathLength={1000}
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.88)"
-                strokeWidth="3.8"
-                strokeLinecap="round"
-                strokeDasharray="115 885"
-                strokeDashoffset={115 - normPhase}
-                filter="url(#softRingGlow)"
-              />
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                pathLength={1000}
-                fill="none"
-                stroke="#FFFFFF"
-                strokeWidth="5.2"
-                strokeLinecap="round"
-                strokeDasharray="45 955"
-                strokeDashoffset={45 - normPhase}
-                filter="url(#orbitalGlow)"
-              />
-
-              {/* Arco secundário diametralmente oposto */}
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                pathLength={1000}
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.3)"
-                strokeWidth="2.0"
-                strokeLinecap="round"
-                strokeDasharray="180 820"
-                strokeDashoffset={180 - oppositePhase}
-              />
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={ORBIT_RX}
-                ry={ORBIT_RY}
-                pathLength={1000}
-                fill="none"
-                stroke="#FFFFFF"
-                strokeWidth="3.2"
-                strokeLinecap="round"
-                strokeDasharray="70 930"
-                strokeDashoffset={70 - oppositePhase}
-                filter="url(#softRingGlow)"
+                strokeDasharray="130 870"
+                strokeDashoffset={130 - normPhase}
+                filter="url(#astroSoftGlow)"
               />
             </g>
 
-            {/* 8. ESTRELA DE 4 PONTAS (FLARE DO LOGO) ORBITANDO JUNTO COM O ANEL */}
+            {/* 6. Feixes de energia orbitando na trajetória inclinada (metade frontal) */}
+            <g
+              transform={`translate(${ORBIT_CX}, ${ORBIT_CY}) rotate(${ORBIT_ANGLE_DEG})`}
+              clipPath="url(#astroOrbitFrontClip)"
+              opacity="0.88"
+            >
+              <ellipse
+                cx="0"
+                cy="0"
+                rx={ORBIT_RX}
+                ry={ORBIT_RY}
+                pathLength={1000}
+                fill="none"
+                stroke="url(#astroCyanGoldGrad)"
+                strokeWidth="3.2"
+                strokeLinecap="round"
+                strokeDasharray="160 840"
+                strokeDashoffset={160 - normPhase}
+                filter="url(#astroSoftGlow)"
+              />
+              <ellipse
+                cx="0"
+                cy="0"
+                rx={ORBIT_RX}
+                ry={ORBIT_RY}
+                pathLength={1000}
+                fill="none"
+                stroke="#FFFFFF"
+                strokeWidth="4.2"
+                strokeLinecap="round"
+                strokeDasharray="45 955"
+                strokeDashoffset={45 - normPhase}
+                filter="url(#astroStarGlow)"
+              />
+              {/* Pulso secundário oposto */}
+              <ellipse
+                cx="0"
+                cy="0"
+                rx={ORBIT_RX}
+                ry={ORBIT_RY}
+                pathLength={1000}
+                fill="none"
+                stroke="rgba(125, 211, 252, 0.7)"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeDasharray="85 915"
+                strokeDashoffset={85 - oppositePhase}
+                filter="url(#astroSoftGlow)"
+              />
+            </g>
+
+            {/* 7. Estrela-guia de 4 pontas orbitando o anel principal */}
             <g
               transform={`translate(${starPos.x}, ${starPos.y}) scale(${starScale})`}
               opacity={starOpacity}
-              filter="url(#orbitalGlow)"
+              filter="url(#astroStarGlow)"
             >
-              {/* Halo difuso central */}
-              <circle cx="0" cy="0" r="14" fill="rgba(255, 255, 255, 0.35)" />
-              {/* Raios principais de difração horizontal e vertical (fiéis à estrela do logo) */}
+              <circle cx="0" cy="0" r="10" fill="rgba(253, 230, 138, 0.4)" />
               <path
-                d="M 0 -58 Q 2.2 -6 8 0 Q 2.2 6 0 58 Q -2.2 6 -8 0 Q -2.2 -6 0 -58 Z"
+                d="M 0 -38 Q 1.8 -4 6 0 Q 1.8 4 0 38 Q -1.8 4 -6 0 Q -1.8 -4 0 -38 Z"
                 fill="#FFFFFF"
               />
               <path
-                d="M -64 0 Q -6 2.2 0 8 Q 6 2.2 64 0 Q 6 -2.2 0 -8 Q -6 -2.2 -64 0 Z"
+                d="M -42 0 Q -4 1.8 0 6 Q 4 1.8 42 0 Q 4 -1.8 0 -6 Q -4 -1.8 -42 0 Z"
                 fill="#FFFFFF"
               />
-              {/* Raios diagonais sutis */}
-              <path
-                d="M -16 -16 Q -2 -1 0 0 Q 1 2 16 16 Q 2 1 0 0 Q -1 -2 -16 -16 Z"
-                fill="rgba(255,255,255,0.8)"
-              />
-              <path
-                d="M 16 -16 Q 1 -2 0 0 Q -2 1 -16 16 Q -1 2 0 0 Q 2 -1 16 -16 Z"
-                fill="rgba(255,255,255,0.8)"
-              />
-              <circle cx="0" cy="0" r="5.5" fill="#FFFFFF" />
+              <circle cx="0" cy="0" r="4" fill="#FEF3C7" />
             </g>
 
-            {/* Partícula luminosa secundária no polo oposto do anel */}
+            {/* Partícula ciano no polo oposto */}
             <g
               transform={`translate(${secondaryPos.x}, ${secondaryPos.y})`}
-              opacity={0.75}
-              filter="url(#softRingGlow)"
+              opacity={isBackArc ? 0.85 : 0.4}
+              filter="url(#astroSoftGlow)"
             >
-              <circle cx="0" cy="0" r="3.2" fill="#FFFFFF" />
+              <circle cx="0" cy="0" r="3" fill="#BAE6FD" />
               <path
-                d="M 0 -18 L 1.5 0 L 0 18 L -1.5 0 Z M -20 0 L 0 1.5 L 20 0 L 0 -1.5 Z"
-                fill="#FFFFFF"
+                d="M 0 -14 L 1.2 0 L 0 14 L -1.2 0 Z M -16 0 L 0 1.2 L 16 0 L 0 -1.2 Z"
+                fill="#E0F2FE"
               />
             </g>
 
-            {/* Vinheta sutil nas extremidades */}
-            <rect
-              x="0"
-              y="0"
-              width="1672"
-              height="941"
-              fill="url(#edgeVignette)"
-              pointerEvents="none"
-            />
+            {/* 8. Respiração luminosa sobre o flare estelar da arte original */}
+            <g
+              transform={`translate(${APEX_FLARE_X}, ${APEX_FLARE_Y}) scale(${apexPulse})`}
+              opacity={0.75}
+              filter="url(#astroStarGlow)"
+            >
+              <circle cx="0" cy="0" r="8" fill="rgba(254, 243, 199, 0.55)" />
+              <g transform={`rotate(${apexRotation})`}>
+                <path
+                  d="M 0 -22 L 1.2 0 L 0 22 L -1.2 0 Z M -22 0 L 0 1.2 L 22 0 L 0 -1.2 Z"
+                  fill="rgba(255, 255, 255, 0.7)"
+                />
+              </g>
+            </g>
           </svg>
         </div>
 
-        {/* HUD de Progresso Minimalista integrado abaixo de "THE MISSION" */}
-        <div className="w-full max-w-md -mt-4 sm:-mt-8 px-4 flex flex-col items-center z-10">
+        {/* HUD de Progresso Minimalista AstroRelics */}
+        <div className="w-full max-w-md -mt-2 sm:-mt-6 px-4 flex flex-col items-center z-10">
           {!errorMessage ? (
             <div className="w-full">
               <div className="flex items-center justify-between text-[11px] sm:text-xs tracking-[0.2em] uppercase text-slate-300/90 mb-2.5 font-display">
-                <span className="truncate max-w-[78%] text-left text-slate-300/80">
+                <span className="truncate max-w-[78%] text-left text-sky-100/80">
                   {statusLabel}
                 </span>
-                <span className="font-semibold text-white tabular-nums tracking-widest">
+                <span className="font-semibold text-amber-100 tabular-nums tracking-widest">
                   {String(roundedProgress).padStart(2, '0')}%
                 </span>
               </div>
 
-              {/* Barra de progresso inspirada no feixe orbital do logo */}
+              {/* Barra de progresso ciano -> dourado inspirada no arco orbital */}
               <div
                 role="progressbar"
                 aria-valuenow={roundedProgress}
@@ -642,18 +484,18 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
                 className="relative w-full h-[3px] rounded-full bg-white/10 overflow-visible"
               >
                 <div
-                  className="relative h-full rounded-full bg-gradient-to-r from-white/30 via-white to-sky-200 shadow-[0_0_16px_rgba(255,255,255,0.85)] transition-[width] duration-75 ease-linear"
+                  className="relative h-full rounded-full bg-gradient-to-r from-sky-400/50 via-sky-200 to-amber-200 shadow-[0_0_16px_rgba(125,211,252,0.75)] transition-[width] duration-75 ease-linear"
                   style={{ width: `${Math.max(2, visualProgress)}%` }}
                 >
-                  {/* Estrela luminosa na ponta da barra de progresso */}
+                  {/* Estrela luminosa na ponta da barra */}
                   <span
-                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-2 rounded-full bg-white shadow-[0_0_12px_3px_rgba(255,255,255,0.95)]"
+                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-2 rounded-full bg-amber-100 shadow-[0_0_14px_4px_rgba(253,230,138,0.95)]"
                     aria-hidden="true"
                   />
                 </div>
               </div>
 
-              <p className="text-[10px] sm:text-[11px] tracking-[0.16em] uppercase text-slate-500 mt-3.5 text-center">
+              <p className="text-[10px] sm:text-[11px] tracking-[0.16em] uppercase text-slate-400/80 mt-3.5 text-center">
                 Sincronizando modelos 3D · Iluminação Solar · Efemérides Orbitais
               </p>
             </div>

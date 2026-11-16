@@ -1,11 +1,11 @@
-# 🚀 Beyond the Mission
+# 🚀 AstroRelics
 > **Abandoned but not Forgotten: Exploração 3D interativa de artefatos históricos da NASA na Terra, na Lua, em Marte e no espaço profundo.**
 
 <p align="center">
-  <img src="./logo.png" alt="Beyond the Mission Logo" width="220" />
+  <img src="./logo_astrorelics.jpg" alt="AstroRelics Logo" width="220" />
 </p>
 
-**Beyond the Mission** é uma experiência web interativa em 3D que transforma a história da exploração espacial em uma jornada visual navegável. Em vez de um catálogo estático, o usuário viaja pelo corredor orbital **Terra–Lua–Marte**, alternando entre astros com transições orbitais suaves e inspecionando em 3D cinco equipamentos históricos deixados — ou perdidos e redescobertos — pela NASA.
+**AstroRelics** é uma experiência web interativa em 3D que transforma a história da exploração espacial em uma jornada visual navegável. Em vez de um catálogo estático, o usuário viaja pelo corredor orbital **Terra–Lua–Marte**, alternando entre astros com transições orbitais suaves e inspecionando em 3D cinco equipamentos históricos deixados — ou perdidos e redescobertos — pela NASA.
 
 ---
 
@@ -52,7 +52,7 @@
 ## 📁 Estrutura Principal
 
 ```text
-beyond_the_mission/
+astrorelics/
 ├── 3d_models/                  # Modelos .glb dos astros e artefatos espaciais
 ├── public/                     # Assets estáticos (ex: logo-header.png)
 └── src/
@@ -77,8 +77,8 @@ beyond_the_mission/
 
 ```bash
 # Clonar o repositório
-git clone https://github.com/Beyond-The-Mission/beyond-the-mission-web.git
-cd beyond-the-mission-web
+git clone https://github.com/AstroRelics/astrorelics-web.git
+cd astrorelics-web
 
 # Instalar dependências
 npm install

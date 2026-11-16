@@ -15,7 +15,7 @@ export const WebGLFallbackScreen: React.FC = () => {
             <Compass className="w-5 h-5 text-sky-400" />
           </div>
           <div>
-            <h1 className="font-display text-lg font-bold tracking-wider">Beyond the Mission</h1>
+            <h1 className="font-display text-lg font-bold tracking-wider">AstroRelics</h1>
             <p className="text-xs text-slate-400">Modo Informativo de Compatibilidade</p>
           </div>
         </div>
@@ -94,7 +94,7 @@ export const WebGLFallbackScreen: React.FC = () => {
       </section>
 
       <footer className="max-w-4xl mx-auto w-full text-center text-xs text-slate-500">
-        Beyond the Mission · Exploração Espacial Interativa
+        AstroRelics · Exploração Espacial Interativa
       </footer>
     </main>
   );

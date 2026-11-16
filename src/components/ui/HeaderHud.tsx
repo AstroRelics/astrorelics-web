@@ -78,21 +78,21 @@ export const HeaderHud: React.FC<HeaderHudProps> = ({
               src="/logo-header.png"
               alt={
                 isEn
-                  ? 'Beyond the Mission — Interactive Space Exploration'
-                  : 'Beyond the Mission — Exploração Espacial Interativa'
+                  ? 'AstroRelics — Interactive Space Exploration'
+                  : 'AstroRelics — Exploração Espacial Interativa'
               }
               title={
                 isEn
-                  ? 'Beyond the Mission — Interactive Space Exploration'
-                  : 'Beyond the Mission — Exploração Espacial Interativa'
+                  ? 'AstroRelics — Interactive Space Exploration'
+                  : 'AstroRelics — Exploração Espacial Interativa'
               }
               className="h-11 sm:h-14 w-auto object-contain select-none pointer-events-none drop-shadow-[0_0_14px_rgba(255,255,255,0.18)]"
               draggable={false}
             />
             <h1 className="sr-only">
               {isEn
-                ? 'Beyond the Mission — Interactive Space Exploration'
-                : 'Beyond the Mission — Exploração Espacial Interativa'}
+                ? 'AstroRelics — Interactive Space Exploration'
+                : 'AstroRelics — Exploração Espacial Interativa'}
             </h1>
           </div>
 

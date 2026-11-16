@@ -10,7 +10,7 @@ import {
 
 export type Language = 'pt' | 'en';
 
-const LANG_STORAGE_KEY = 'beyond_the_mission_lang_v1';
+const LANG_STORAGE_KEY = 'astrorelics_lang_v1';
 
 export function loadLanguage(): Language {
   if (typeof window === 'undefined') return 'pt';

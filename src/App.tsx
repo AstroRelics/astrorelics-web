@@ -375,7 +375,7 @@ export const App: React.FC = () => {
     loadUnlockedEndings()
   );
 
-  // Estado persistente e controles de "Beyond the Mission: Ecos do Espaço"
+  // Estado persistente e controles de "AstroRelics: Ecos do Espaço"
   const [echoesState, setEchoesState] = useState<EchoesPersistedState>(() =>
     loadEchoesState()
   );

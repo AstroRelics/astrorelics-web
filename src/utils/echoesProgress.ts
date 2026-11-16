@@ -1,6 +1,6 @@
 import { EchoesPersistedState, EchoesSignalId } from '../types/echoesMission';
 
-const ECHOES_STORAGE_KEY = 'beyond_the_mission_echoes_state_v1';
+const ECHOES_STORAGE_KEY = 'astrorelics_echoes_state_v1';
 
 export const DEFAULT_ECHOES_STATE: EchoesPersistedState = {
   reconstructedSignals: [],

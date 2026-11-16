@@ -1,4 +1,4 @@
-# 🚀 Beyond the Mission — Contexto Completo do Projeto
+# 🚀 AstroRelics — Contexto Completo do Projeto
 
 > **"Abandoned but not Forgotten"** *(Abandonados, mas não Esquecidos)*  
 > Uma experiência web tridimensional e interativa dedicada à arqueologia espacial, explorando os artefatos históricos da NASA preservados na Terra, na Lua, em Marte e no silêncio do espaço profundo.
@@ -37,9 +37,9 @@
 
 ## 1. Visão Geral & Filosofia do Projeto
 
-**Beyond the Mission** nasceu com o propósito de transformar a forma como a história da astronáutica e da exploração espacial é comunicada ao público. Frequentemente, museus e plataformas digitais limitam o registro de missões espaciais a tabelas estáticas, fotos bidimensionais de arquivo ou longos artigos de texto desprovidos de escala geográfica ou dimensional.
+**AstroRelics** nasceu com o propósito de transformar a forma como a história da astronáutica e da exploração espacial é comunicada ao público. Frequentemente, museus e plataformas digitais limitam o registro de missões espaciais a tabelas estáticas, fotos bidimensionais de arquivo ou longos artigos de texto desprovidos de escala geográfica ou dimensional.
 
-Em contrapartida, **Beyond the Mission** oferece uma experiência tridimensional imersiva e interativa que coloca o usuário no controle de uma maquete astronômica em tempo real, abrangendo o corredor interplanetário **Terra–Lua–Marte**.
+Em contrapartida, **AstroRelics** oferece uma experiência tridimensional imersiva e interativa que coloca o usuário no controle de uma maquete astronômica em tempo real, abrangendo o corredor interplanetário **Terra–Lua–Marte**.
 
 ### O que o projeto resolve e propõe:
 - **Espacialidade Real:** Mostra *onde* os artefatos estão de fato localizados — seja fixados em coordenadas geográficas reais de crateras lunares e marcianas, seja à deriva em órbitas caóticas no espaço profundo ou em pontos de equilíbrio gravitacional (pontos de Lagrange).
@@ -57,7 +57,7 @@ Desde o lançamento da Sputnik e o início do programa Apollo, dezenas de veícu
 - Alguns foram deliberadamente impactados contra a superfície de outros corpos;
 - **Mas outros permaneceram intactos:** pousados no vácuo protetor da Lua, enterrados nas tempestades de poeira de Marte ou vagando silenciosamente em órbitas solares ao longo de milhões de quilômetros.
 
-O projeto **Beyond the Mission** resgata esses monumentos silenciosos da engenharia humana, demonstrando que eles não são mero "lixo espacial", mas relíquias históricas fundamentais que continuam ensinando a astrofísica contemporânea.
+O projeto **AstroRelics** resgata esses monumentos silenciosos da engenharia humana, demonstrando que eles não são mero "lixo espacial", mas relíquias históricas fundamentais que continuam ensinando a astrofísica contemporânea.
 
 ---
 
@@ -312,7 +312,7 @@ A interface foi projetada como uma cabine de comando espacial futurista e minima
 ## 8. Estrutura de Diretórios
 
 ```text
-beyond_the_mission/
+astrorelics/
 ├── 3d_models/                           # Modelos 3D originais em formato GLB
 │   ├── Earth_1_12756.glb                # Modelo esférico texturizado da Terra
 │   ├── moon_small.glb                   # Modelo detalhado da Lua
@@ -373,7 +373,7 @@ beyond_the_mission/
 
 ## 9. Conclusão & Impacto Educacional
 
-O projeto **Beyond the Mission** sintetiza a interseção entre **ciência aeroespacial, computação gráfica contemporânea e experiência interativa de design**.
+O projeto **AstroRelics** sintetiza a interseção entre **ciência aeroespacial, computação gráfica contemporânea e experiência interativa de design**.
 
 Ao resgatar as histórias de relíquias como o estágio **J002E3**, os prismas do **LRRR**, a solidão do módulo **Snoopy**, a incansável travessia do rover **Opportunity** e os voos pioneiros do **Ingenuity**, a plataforma cumpre com precisão o lema que a inspirou:
 

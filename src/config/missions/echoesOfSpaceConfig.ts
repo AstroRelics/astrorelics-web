@@ -2,7 +2,7 @@ import type { EchoesSignalConfig, EchoesSignalId } from '../../types/echoesMissi
 import type { Language } from '../../utils/i18n';
 
 export const ECHOES_OPENING_PREMISE = {
-  title: 'Beyond the Mission: Ecos do Espaço',
+  title: 'AstroRelics: Ecos do Espaço',
   subtitle: 'Investigação de Arquivos Espaciais Incompletos (5–8 min)',
   systemHeader: 'TERMINAL DE ARQUIVO ESPACIAL // REGISTROS INCOMPLETOS',
   openingQuote:
@@ -15,7 +15,7 @@ export const ECHOES_OPENING_PREMISE = {
 };
 
 export const ECHOES_OPENING_PREMISE_EN = {
-  title: 'Beyond the Mission: Echoes of Space',
+  title: 'AstroRelics: Echoes of Space',
   subtitle: 'Interactive Space Archive Investigation (5–8 min)',
   systemHeader: 'SPACE ARCHIVE TERMINAL // INCOMPLETE RECORDS',
   openingQuote:

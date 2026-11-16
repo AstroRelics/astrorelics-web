@@ -4,7 +4,7 @@ import {
   MissionTelemetryState,
 } from '../types/mission';
 
-const STORAGE_KEY = 'beyond_the_mission_unlocked_endings_v1';
+const STORAGE_KEY = 'astrorelics_unlocked_endings_v1';
 
 export type UnlockedEndingsMap = Partial<Record<MissionId, string[]>>;
 
