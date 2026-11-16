@@ -1,97 +1,147 @@
-# 🚀 AstroRelics
-> **Abandoned but not Forgotten: Exploração 3D interativa de artefatos históricos da NASA na Terra, na Lua, em Marte e no espaço profundo.**
+<div align="center">
+  <img src="./logo_astrorelics.jpg" alt="AstroRelics Logo" width="620" />
 
-<p align="center">
-  <img src="./logo_astrorelics.jpg" alt="AstroRelics Logo" width="220" />
-</p>
+  # 🚀 AstroRelics
 
-**AstroRelics** é uma experiência web interativa em 3D que transforma a história da exploração espacial em uma jornada visual navegável. Em vez de um catálogo estático, o usuário viaja pelo corredor orbital **Terra–Lua–Marte**, alternando entre astros com transições orbitais suaves e inspecionando em 3D cinco equipamentos históricos deixados — ou perdidos e redescobertos — pela NASA.
+  > **Abandoned but not Forgotten — Interactive 3D Space Archaeology across Earth, the Moon, Mars, and Deep Space.**
 
----
+  [![Live Demo](https://img.shields.io/badge/▶%20Live%20Demo-astrorelics--web.vercel.app-0ea5e9?style=for-the-badge)](https://astrorelics-web.vercel.app/)
+  [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
+  [![Three.js](https://img.shields.io/badge/Three.js-WebGL-000000?style=for-the-badge&logo=three.js&logoColor=white)](https://threejs.org/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-## 🌌 O que o Projeto Oferece
-
-- **Navegação Orbital 3D & Salto Hiperespacial:** Viaje entre **Terra**, **Lua** e **Marte** com transições orbitais calculadas sem colisão, campo estelar, nebulosa, iluminação espacial e efeito visual de hiperespaço.
-- **Inspeção Interativa de Artefatos Espaciais:** Selecione artefatos posicionados no espaço profundo ou ancorados nas coordenadas reais da superfície lunar e marciana para inspecionar seus modelos 3D em detalhe.
-- **Painel de Contexto Científico e Histórico:** Para cada destino e artefato, o painel lateral exibe status da missão, localização/coordenadas, ficha técnica, descrição de engenharia, história da missão e importância científica.
-- **Feedback Sonoro & Responsividade:** Efeitos sonoros espaciais sintetizados, HUD adaptativa para desktop, tablet e mobile, tela de carregamento com progresso de pré-carregamento dos modelos `.glb` e fallback automático caso WebGL não esteja disponível.
+</div>
 
 ---
 
-## 🪐 Corpos Celestes & Artefatos 3D
+## 🌐 Live Demo
 
-### Corpos Celestes
-| Astro | Modelo 3D |
-| --- | --- |
-| **Terra** | `3d_models/Earth_1_12756.glb` |
-| **Lua** | `3d_models/moon_small.glb` |
-| **Marte** | `3d_models/24881_Mars_1_6792.glb` |
+Explore the live application directly in your browser on Vercel:
 
-### 5 Artefatos Históricos da NASA
-1. **J002E3 · Estágio S-IVB (Apollo 12)** — *Espaço Profundo (Corredor Terra–Lua)* (`3d_models/j002e3_s_ivb.glb`)
-   - Terceiro estágio do Saturn V lançado em 1969, perdido por 33 anos e redescoberto em 2002 como um suposto asteroide até sua assinatura espectral de tinta TiO₂ revelar sua origem.
-2. **Retrorefletor a Laser LRRR (Apollo 11, 14 e 15)** — *Lua · Mare Tranquillitatis* (`3d_models/apollo_lrrr.glb`)
-   - Matriz óptica passiva de 100 prismas de quartzo instalada em 1969 que segue ativa há mais de 55 anos, permitindo medir o afastamento lunar de 3,8 cm/ano.
-3. **Módulo Lunar "Snoopy" (Apollo 10)** — *Espaço Profundo (Órbita Heliocêntrica)* (`3d_models/apollo_lunar_module.glb`)
-   - Estágio de subida do LM-4 que realizou o ensaio geral do pouso lunar em maio de 1969; única espaçonave tripulada a vagar intacta e desabitada em órbita solar.
-4. **Rover Opportunity (MER-B)** — *Marte · Meridiani Planum* (`3d_models/opportunity_rover.glb`)
-   - Projetado para 90 sóis, operou por quase 15 anos e percorreu 45,16 km em Marte antes de silenciar na tempestade de poeira global de 2018.
-5. **Helicóptero Ingenuity (Mars 2020)** — *Marte · Cratera Jezero* (`3d_models/ingenuity_helicopter.glb`)
-   - Primeira aeronave a realizar voo motorizado e controlado em outro planeta, completando 72 voos entre 2021 e 2024 (frente aos 5 planejados).
+👉 **[https://astrorelics-web.vercel.app/](https://astrorelics-web.vercel.app/)**
 
 ---
 
-## 🛠️ Stack Tecnológica
+## 📖 About the Project
+
+**AstroRelics** is a real-time, interactive 3D web experience dedicated to **space archaeology**. Rather than presenting space history through static 2D photographs or dry descriptive tables, the platform puts the user in control of a navigable astronomical environment spanning the **Earth–Moon–Mars** orbital corridor.
+
+The hardware humanity has left beyond Earth is not mere space debris: these artifacts are enduring monuments of engineering and active scientific instruments that continue to reveal insights about our solar system. In AstroRelics, users travel between celestial bodies via smooth orbital transitions and inspect five iconic NASA artifacts in 360° — anchored to real geographic coordinates or drifting through deep space.
+
+---
+
+## ✨ Key Features
+
+- **3D Orbital Navigation & Hyperspace Jumps:** Travel between **Earth**, the **Moon**, and **Mars** with collision-free mathematical trajectories, a dynamic starfield, procedural GLSL nebulae, and a warp-speed visual transition.
+- **360° Interactive Inspection:** Explore automatically normalized `.glb` 3D models with free rotation, dynamic solar lighting, and custom atmospheric shaders tailored to each celestial body.
+- **Real Geographic Surface Projection:** Ground pins mapped from real-world latitude and longitude coordinates onto 3D spherical planetary meshes on lunar plains and Martian craters.
+- **Scientific Telemetry & Historical Context:** A dedicated telemetry drawer displaying engineering specifications, operational status, mission history, and documented scientific impact.
+- **Interactive Investigation Missions (*Echoes of Space*):** An interactive mode where users investigate anomalous signals, examine historical clues, and reconstruct real space mission records.
+- **Procedural Audio & Bilingual Support (EN/PT):** Real-time synthesized spatial sound effects via the native Web Audio API, instant English/Portuguese language switching, an animated astrolabe loading screen, and an automatic compatibility fallback for devices without WebGL.
+
+---
+
+## 🪐 Celestial Bodies & Modeled Artifacts
+
+### Celestial Bodies
+| Body | 3D Model | Visual & Shader Treatment |
+| :--- | :--- | :--- |
+| **Earth** | `3d_models/Earth_1_12756.glb` | 23.5° axial tilt and sky-blue Rayleigh atmospheric scattering shader with twilight terminator |
+| **Moon** | `3d_models/moon_small.glb` | High-roughness PBR regolith material with no atmosphere to emphasize the lunar vacuum |
+| **Mars** | `3d_models/24881_Mars_1_6792.glb` | 25.19° axial tilt and subtle Fresnel halo simulating Mars's thin $CO_2$ atmosphere |
+
+### 5 Historic NASA Artifacts
+1. **J002E3 · Saturn V S-IVB Third Stage (Apollo 12)** — *Deep Space (Earth–Moon Corridor)*  
+   Launched in 1969, lost for 33 years, and rediscovered in 2002 as a suspected asteroid until its titanium dioxide ($TiO_2$) white paint spectral signature revealed its human origin.
+2. **LRRR Laser Ranging Retroreflector (Apollo 11, 14 & 15)** — *Moon · Mare Tranquillitatis*  
+   A passive 100-prism fused-quartz optical array deployed in 1969 that remains active after more than 55 years, proving the Moon recedes from Earth at 3.8 cm per year.
+3. **"Snoopy" Lunar Module (Apollo 10 · LM-4)** — *Deep Space (Heliocentric Orbit)*  
+   The ascent stage from the May 1969 lunar landing dress rehearsal; the only crewed spacecraft still drifting intact and uninhabited around the Sun.
+4. **Opportunity Rover (MER-B)** — *Mars · Meridiani Planum*  
+   Engineered for a 90-sol mission, Opportunity operated for nearly 15 years and traveled 45.16 km across Mars before falling silent during the 2018 global dust storm.
+5. **Ingenuity Mars Helicopter (Mars 2020)** — *Mars · Jezero Crater*  
+   The first aircraft to achieve powered, controlled flight on another planet, completing 72 flights between 2021 and 2024 (far surpassing its original 5-flight plan).
+
+---
+
+## 🛠️ Tech Stack
 
 - **Frontend:** React 18, TypeScript, Vite, Tailwind CSS
-- **Gráficos 3D:** Three.js, React Three Fiber (`@react-three/fiber`), Drei (`@react-three/drei`)
-- **Ícones & UI:** Lucide React (`lucide-react`) + ícones SVG customizados em `src/components/ui/ArtifactCartoonIcons.tsx`
+- **3D Graphics & Shaders:** Three.js, React Three Fiber (`@react-three/fiber`), Drei (`@react-three/drei`), custom GLSL
+- **Audio & UI:** Native Web Audio API, Lucide React, and custom SVG vector illustrations
 
 ---
 
-## 📁 Estrutura Principal
+## 💻 Running the Project Locally
+
+### Prerequisites
+- **Node.js** (v18 or higher recommended)
+- **npm** (included with Node.js)
+- A modern browser with **WebGL** support
+
+### Step-by-Step Setup
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/AstroRelics/astrorelics-web.git
+
+# 2. Navigate into the project directory
+cd astrorelics-web
+
+# 3. Install dependencies
+npm install
+
+# 4. Start the development server
+npm run dev
+```
+
+Once `npm run dev` is running, open the local URL printed in your terminal (typically `http://localhost:5173`).
+
+### Production Build
+
+```bash
+# Build optimized production assets into dist/
+npm run build
+
+# Preview the production build locally
+npm run preview
+```
+
+---
+
+## 📁 Project Structure
 
 ```text
 astrorelics/
-├── 3d_models/                  # Modelos .glb dos astros e artefatos espaciais
-├── public/                     # Assets estáticos (ex: logo-header.png)
-└── src/
-    ├── components/
-    │   ├── scene/              # Canvas 3D, controles orbitais, transição hiperespacial, iluminação e atores
-    │   └── ui/                 # HUD superior, painel de informações, ícones, loading e fallback WebGL
-    ├── config/
-    │   ├── celestialBodies.ts  # Configuração visual, escala e dados da Terra, Lua e Marte
-    │   └── spaceArtifacts.ts   # Metadados, coordenadas, specs e modelos dos 5 artefatos
-    ├── types/experience.ts     # Tipagens da experiência, astros e artefatos
-    └── utils/
-        ├── modelPreloader.ts   # Pré-carregamento e normalização de bounding box dos .glb
-        ├── orbitalTransitionMath.ts # Cálculo de transição orbital sem colisão
-        └── soundEffects.ts     # Efeitos sonoros da navegação e inspeção
-```
-
-> **Normalização automática de modelos:** O pré-carregador (`src/utils/modelPreloader.ts`) calcula a *Bounding Box* (`THREE.Box3`) de cada `.glb`, centraliza o pivô na origem `(0, 0, 0)` e normaliza o raio antes de aplicar as escalas configuradas em `src/config/celestialBodies.ts` e `src/config/spaceArtifacts.ts`.
-
----
-
-## 🚀 Como Executar o Projeto
-
-```bash
-# Clonar o repositório
-git clone https://github.com/AstroRelics/astrorelics-web.git
-cd astrorelics-web
-
-# Instalar dependências
-npm install
-
-# Iniciar servidor de desenvolvimento
-npm run dev
-
-# Gerar build de produção
-npm run build
+├── 3d_models/                  # .glb 3D models of celestial bodies and space artifacts
+├── public/                     # Static assets (logos, ambient audio)
+├── src/
+│   ├── components/
+│   │   ├── scene/              # 3D canvas, orbital controls, hyperspace jump, lighting & shaders
+│   │   └── ui/                 # Top HUD, telemetry drawer, missions, loading screen & WebGL fallback
+│   ├── config/
+│   │   ├── celestialBodies.ts  # Physical, visual & shader configuration for Earth, Moon & Mars
+│   │   ├── spaceArtifacts.ts   # Metadata, coordinates & specs for the 5 NASA artifacts
+│   │   └── missions/           # Scripts and clues for the interactive investigation mode
+│   ├── types/                  # TypeScript definitions for scene state and missions
+│   └── utils/                  # Box3 model preloader, orbital math, i18n & procedural audio
+├── index.html
+├── package.json
+└── vite.config.ts
 ```
 
 ---
 
-## 📄 Licença
+## 📚 Scientific Data Sources
 
-Distribuído sob a licença MIT.
+- [NASA Science 3D Resources](https://science.nasa.gov/3d-resources/) — Official 3D models of planets, moons, and spacecraft
+- [NASA NSSDCA Planetary Fact Sheets](https://nssdc.gsfc.nasa.gov/planetary/factsheet/) — Physical and orbital telemetry
+- [NASA JPL CNEOS](https://cneos.jpl.nasa.gov/) — Orbital records and spectral analysis of J002E3
+- [NASA Mars Exploration Program](https://science.nasa.gov/mars/) — Opportunity and Ingenuity mission data
+- [International Laser Ranging Service (ILRS)](https://ilrs.gsfc.nasa.gov/) — Lunar laser ranging telemetry for LRRR
+
+---
+
+## 📄 License
+
+Distributed under the **MIT License**.
