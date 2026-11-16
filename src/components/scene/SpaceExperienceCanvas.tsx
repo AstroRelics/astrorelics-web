@@ -9,6 +9,7 @@ import {
   TravelPhase,
   ViewportTier,
 } from '../../types/experience';
+import { EchoesHotspot3D } from '../../types/echoesMission';
 import { LoadedCelestialAsset } from '../../utils/modelPreloader';
 import { SpaceLighting } from './SpaceLighting';
 import { StarfieldAndNebula } from './StarfieldAndNebula';
@@ -40,6 +41,11 @@ interface SpaceExperienceCanvasProps {
     targetArtifactId?: SpaceArtifactId | null
   ) => void;
   onUserInteractionStart?: () => void;
+  activeHotspots?: EchoesHotspot3D[];
+  discoveredHotspotIds?: string[];
+  selectedHotspotId?: string | null;
+  revealCluesList?: boolean;
+  onSelectHotspot?: (hotspot: EchoesHotspot3D) => void;
 }
 
 export const SpaceExperienceCanvas: React.FC<SpaceExperienceCanvasProps> = ({
@@ -59,6 +65,11 @@ export const SpaceExperienceCanvas: React.FC<SpaceExperienceCanvasProps> = ({
   onTravelPhaseChange,
   onTravelComplete,
   onUserInteractionStart,
+  activeHotspots,
+  discoveredHotspotIds,
+  selectedHotspotId,
+  revealCluesList,
+  onSelectHotspot,
 }) => {
   const perfSettings = useMemo(() => {
     const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 4 : 4;
@@ -146,6 +157,11 @@ export const SpaceExperienceCanvas: React.FC<SpaceExperienceCanvasProps> = ({
           reducedMotion={reducedMotion}
           dragStateRef={dragStateRef}
           travelRef={travelRef}
+          activeHotspots={activeHotspots}
+          discoveredHotspotIds={discoveredHotspotIds}
+          selectedHotspotId={selectedHotspotId}
+          revealCluesList={revealCluesList}
+          onSelectHotspot={onSelectHotspot}
         />
 
         {/* Controles de rotação por arraste ao redor do corpo ou objeto 3D selecionado */}

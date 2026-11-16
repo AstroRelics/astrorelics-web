@@ -10,6 +10,8 @@ import {
   SpaceArtifactId,
   ViewportTier,
 } from '../../types/experience';
+import { EchoesHotspot3D } from '../../types/echoesMission';
+import { getLocalizedArtifact, useLanguage } from '../../utils/i18n';
 import { loadSpaceArtifactModel } from '../../utils/modelPreloader';
 import { ArtifactCartoonIcon } from '../ui/ArtifactCartoonIcons';
 import { ExplorationDragState } from './ExplorationControls';
@@ -44,12 +46,14 @@ interface ArtifactPinMarkerProps {
  * Pin interativo 3D com o ícone cartoonizado personalizado do objeto.
  */
 export const ArtifactPinMarker: React.FC<ArtifactPinMarkerProps> = ({
-  artifact,
+  artifact: baseArtifact,
   activeArtifactId,
   experienceState,
   compact = false,
   onSelectArtifact,
 }) => {
+  const { lang } = useLanguage();
+  const artifact = getLocalizedArtifact(baseArtifact.id, lang);
   const [hovered, setHovered] = useState(false);
   const isActive = activeArtifactId === artifact.id;
   const isDrifting = artifact.placementType === 'deep-space';
@@ -83,7 +87,13 @@ export const ArtifactPinMarker: React.FC<ArtifactPinMarkerProps> = ({
               <span
                 className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-400/30"
               >
-                {isDrifting ? 'À Deriva no Espaço' : 'Relíquia na Superfície'}
+                {isDrifting
+                  ? lang === 'en'
+                    ? 'Drifting in Space'
+                    : 'À Deriva no Espaço'
+                  : lang === 'en'
+                  ? 'Surface Relic'
+                  : 'Relíquia na Superfície'}
               </span>
               <span className="text-[10px] text-slate-400 font-mono">{artifact.year.split(' ')[0]}</span>
             </div>
@@ -94,7 +104,7 @@ export const ArtifactPinMarker: React.FC<ArtifactPinMarkerProps> = ({
               {artifact.locationLabel}
             </p>
             <div className="mt-1.5 pt-1.5 border-t border-slate-800 flex items-center justify-between text-[10px] text-sky-300 font-semibold">
-              <span>⚡ Saltar na velocidade da luz</span>
+              <span>{lang === 'en' ? '⚡ Jump at light speed' : '⚡ Saltar na velocidade da luz'}</span>
               <span>3D →</span>
             </div>
           </div>
@@ -108,7 +118,11 @@ export const ArtifactPinMarker: React.FC<ArtifactPinMarkerProps> = ({
           />
           <button
             type="button"
-            aria-label={`Viajar na velocidade da luz até ${artifact.name}`}
+            aria-label={
+              lang === 'en'
+                ? `Jump at light speed to ${artifact.name}`
+                : `Viajar na velocidade da luz até ${artifact.name}`
+            }
             className={`relative rounded-full flex items-center justify-center transition-all duration-200 border-2 shadow-[0_0_22px_rgba(14,165,233,0.4)] ${
               compact ? 'w-10 h-10 p-1' : 'w-12 h-12 p-1.5'
             } ${
@@ -138,7 +152,9 @@ export const ArtifactPinMarker: React.FC<ArtifactPinMarkerProps> = ({
           />
           <span>{artifact.shortName}</span>
           {isDrifting && (
-            <span className="text-[9px] text-sky-300/90 font-normal ml-0.5">· À Deriva</span>
+            <span className="text-[9px] text-sky-300/90 font-normal ml-0.5">
+              {lang === 'en' ? '· Drifting' : '· À Deriva'}
+            </span>
           )}
         </div>
       </div>
@@ -248,6 +264,11 @@ interface ArtifactShowcaseActorProps {
   reducedMotion: boolean;
   dragStateRef: MutableRefObject<ExplorationDragState>;
   travelRef: MutableRefObject<TravelRuntimeState>;
+  activeHotspots?: EchoesHotspot3D[];
+  discoveredHotspotIds?: string[];
+  selectedHotspotId?: string | null;
+  revealCluesList?: boolean;
+  onSelectHotspot?: (hotspot: EchoesHotspot3D) => void;
 }
 
 /**
@@ -256,10 +277,16 @@ interface ArtifactShowcaseActorProps {
  */
 export const ArtifactShowcaseActor: React.FC<ArtifactShowcaseActorProps> = ({
   activeArtifactId,
+  experienceState,
   viewportTier,
   reducedMotion,
   dragStateRef,
   travelRef,
+  activeHotspots = [],
+  discoveredHotspotIds = [],
+  selectedHotspotId = null,
+  revealCluesList = false,
+  onSelectHotspot,
 }) => {
   const { gl } = useThree();
   const rootRef = useRef<THREE.Group>(null);
@@ -369,7 +396,10 @@ export const ArtifactShowcaseActor: React.FC<ArtifactShowcaseActorProps> = ({
     }
 
     // Rotação contínua suave + rotação manual em 360° pelo arraste do usuário
-    if (!reducedMotion && !dragStateRef.current.isDragging) {
+    if (activeHotspots.length > 0) {
+      // Durante a inspeção de pistas 3D, estabiliza a rotação automática para manter os pontos alinhados
+      idleSpinRef.current = THREE.MathUtils.damp(idleSpinRef.current, 0, 6, safeDelta);
+    } else if (!reducedMotion && !dragStateRef.current.isDragging) {
       idleSpinRef.current += config.idleRotationSpeed * safeDelta;
     }
 
@@ -390,6 +420,11 @@ export const ArtifactShowcaseActor: React.FC<ArtifactShowcaseActorProps> = ({
   });
 
   const activeScene = displayedId ? loadedModels[displayedId] : null;
+  const showHotspots =
+    experienceState === 'exploring' &&
+    !travelRef.current.isTraveling &&
+    activeArtifactId !== null &&
+    activeHotspots.length > 0;
 
   return (
     <group ref={rootRef} name="artifact-showcase-actor" visible={false}>
@@ -414,6 +449,77 @@ export const ArtifactShowcaseActor: React.FC<ArtifactShowcaseActorProps> = ({
 
       <group ref={spinRef}>
         {activeScene && <primitive object={activeScene} />}
+
+        {/* Marcadores 3D de pontos de interesse para a missão "Ecos do Espaço" */}
+        {showHotspots &&
+          activeHotspots.map((hotspot) => {
+            const isDiscovered = discoveredHotspotIds.includes(hotspot.id);
+            const isSelected = selectedHotspotId === hotspot.id;
+            const showFullBadge = isDiscovered || isSelected || revealCluesList;
+
+            return (
+              <group key={hotspot.id} position={hotspot.position3D}>
+                <Html
+                  center
+                  zIndexRange={[22, 0]}
+                  style={{
+                    pointerEvents: 'auto',
+                    userSelect: 'none',
+                  }}
+                >
+                  {showFullBadge ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectHotspot?.(hotspot);
+                      }}
+                      aria-label={`${hotspot.indexNumber}: ${hotspot.label}`}
+                      title={hotspot.label}
+                      className={`group relative flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-md border text-[11px] font-display font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${
+                        isSelected
+                          ? 'bg-amber-400 text-[#030914] border-white scale-110 shadow-[0_0_24px_rgba(251,191,36,0.85)]'
+                          : isDiscovered
+                          ? 'bg-[#07261F]/90 text-emerald-200 border-emerald-400/75 shadow-[0_0_16px_rgba(16,185,129,0.4)] hover:scale-105'
+                          : 'bg-[#081A36]/90 text-sky-100 border-sky-300/80 shadow-[0_0_20px_rgba(56,189,248,0.55)] hover:scale-110'
+                      }`}
+                    >
+                      {!isDiscovered && (
+                        <span className="absolute -inset-1 rounded-full bg-sky-400/35 animate-ping pointer-events-none" />
+                      )}
+                      <span
+                        className={`w-4 h-4 rounded-full font-mono text-[10px] font-bold flex items-center justify-center ${
+                          isSelected
+                            ? 'bg-[#030914] text-amber-300'
+                            : isDiscovered
+                            ? 'bg-emerald-400 text-[#03120E]'
+                            : 'bg-sky-400 text-[#020814]'
+                        }`}
+                      >
+                        {isDiscovered ? '✓' : hotspot.indexNumber}
+                      </span>
+                      <span className="whitespace-nowrap pr-0.5">{hotspot.shortLabel}</span>
+                    </button>
+                  ) : (
+                    /* Marcador luminoso bem discreto sobre o modelo 3D quando as pistas estão ocultas */
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectHotspot?.(hotspot);
+                      }}
+                      aria-label={`Vestígio luminoso ${hotspot.indexNumber}`}
+                      title="Vestígio luminoso — clique para investigar"
+                      className="group relative w-6 h-6 flex items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                    >
+                      <span className="absolute w-4 h-4 rounded-full bg-sky-300/25 animate-ping pointer-events-none" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-sky-200/85 group-hover:bg-amber-300 group-hover:scale-125 border border-white/80 shadow-[0_0_10px_rgba(125,211,252,0.9)] transition-all" />
+                    </button>
+                  )}
+                </Html>
+              </group>
+            );
+          })}
       </group>
 
       {/* Sombra de contato projetada abaixo do artefato 3D para dar profundidade espacial e volume */}

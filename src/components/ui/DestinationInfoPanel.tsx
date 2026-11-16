@@ -11,13 +11,17 @@ import {
   Cpu,
   Award,
 } from 'lucide-react';
-import { CELESTIAL_BODIES } from '../../config/celestialBodies';
-import { SPACE_ARTIFACTS, SPACE_ARTIFACT_ORDER } from '../../config/spaceArtifacts';
+import { SPACE_ARTIFACT_ORDER } from '../../config/spaceArtifacts';
 import {
   CelestialBodyId,
   ExperienceState,
   SpaceArtifactId,
 } from '../../types/experience';
+import {
+  getLocalizedArtifact,
+  getLocalizedBody,
+  useLanguage,
+} from '../../utils/i18n';
 import { LoadedCelestialAsset } from '../../utils/modelPreloader';
 import { ArtifactCartoonIcon } from './ArtifactCartoonIcons';
 
@@ -31,6 +35,8 @@ interface DestinationInfoPanelProps {
   onTravelToHighlighted: (id: CelestialBodyId) => void;
   onSelectArtifact: (id: SpaceArtifactId) => void;
   onCloseArtifact: () => void;
+  unidentifiedInvestigationMode?: boolean;
+  unidentifiedSignalTitle?: string;
 }
 
 type ArtifactTab = 'overview' | 'history' | 'importance';
@@ -45,12 +51,57 @@ export const DestinationInfoPanel: React.FC<DestinationInfoPanelProps> = ({
   onTravelToHighlighted,
   onSelectArtifact,
   onCloseArtifact,
+  unidentifiedInvestigationMode = false,
+  unidentifiedSignalTitle,
 }) => {
+  const { lang } = useLanguage();
+  const isEn = lang === 'en';
   const [activeTab, setActiveTab] = useState<ArtifactTab>('overview');
-  const currentBody = CELESTIAL_BODIES[selectedId];
-  const highlightedBody = highlightedId ? CELESTIAL_BODIES[highlightedId] : null;
-  const activeArtifact = activeArtifactId ? SPACE_ARTIFACTS[activeArtifactId] : null;
+  const currentBody = getLocalizedBody(selectedId, lang);
+  const highlightedBody = highlightedId ? getLocalizedBody(highlightedId, lang) : null;
+  const activeArtifact = activeArtifactId
+    ? getLocalizedArtifact(activeArtifactId, lang)
+    : null;
   const isTraveling = experienceState === 'traveling';
+
+  if (unidentifiedInvestigationMode) {
+    return (
+      <div className="fixed bottom-0 inset-x-0 z-20 pointer-events-none px-4 pb-3.5 sm:px-7 sm:pb-5">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2.5">
+          <div className="pointer-events-auto flex flex-wrap items-center gap-2.5">
+            <div className="rounded-xl bg-[#07152D]/95 backdrop-blur-xl border border-amber-400/60 px-4 py-2.5 text-xs text-amber-100 flex items-center gap-2.5 shadow-[0_0_25px_rgba(245,158,11,0.25)]">
+              <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+              <div>
+                <span className="font-display font-bold text-amber-300 uppercase tracking-wider text-[10px] block">
+                  {isEn
+                    ? 'Investigation Mode · Hidden Identity'
+                    : 'Modo Investigação · Identidade Oculta'}
+                </span>
+                <span className="text-slate-100 font-medium">
+                  {unidentifiedSignalTitle ??
+                    (isEn ? 'Unidentified Signal' : 'Sinal Não Identificado')}{' '}
+                  —{' '}
+                  {isEn
+                    ? 'Drag the 3D model in 360° and find the 3 glowing points.'
+                    : 'Arraste o modelo 3D em 360° e procure os 3 pontos luminosos.'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={isTraveling}
+              onClick={onResetOrientation}
+              className="h-10 px-3.5 rounded-xl bg-[#050C1A]/90 hover:bg-[#0D1F3D] border border-[#162847] hover:border-sky-400/40 text-xs font-medium text-sky-100 flex items-center gap-1.5 shadow-lg transition-all"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-sky-400" />
+              <span>{isEn ? 'Reset 3D angle' : 'Restaurar ângulo 3D'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed bottom-0 inset-x-0 z-20 pointer-events-none px-4 pb-3.5 sm:px-7 sm:pb-5">
@@ -67,7 +118,11 @@ export const DestinationInfoPanel: React.FC<DestinationInfoPanelProps> = ({
                 className="h-10 px-4 rounded-xl bg-[#091A36]/95 hover:bg-[#102952] border border-sky-400/50 text-xs sm:text-sm font-display font-semibold text-white flex items-center gap-2 shadow-lg transition-all"
               >
                 <ArrowLeft className="w-4 h-4 text-sky-400" />
-                <span>Voltar para {CELESTIAL_BODIES[activeArtifact.relatedBodyId].name}</span>
+                <span>
+                  {isEn
+                    ? `Back to ${getLocalizedBody(activeArtifact.relatedBodyId, lang).name}`
+                    : `Voltar para ${getLocalizedBody(activeArtifact.relatedBodyId, lang).name}`}
+                </span>
               </button>
 
               <button
@@ -77,18 +132,26 @@ export const DestinationInfoPanel: React.FC<DestinationInfoPanelProps> = ({
                 className="h-10 px-3.5 rounded-xl bg-[#050C1A]/90 hover:bg-[#0D1F3D] border border-[#162847] hover:border-sky-400/40 text-xs font-medium text-sky-100 flex items-center gap-1.5 shadow-lg transition-all"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-sky-400" />
-                <span>Restaurar ângulo 3D</span>
+                <span>{isEn ? 'Reset 3D angle' : 'Restaurar ângulo 3D'}</span>
               </button>
 
               <div className="rounded-xl bg-[#050C1A]/85 backdrop-blur-md border border-[#162847] px-3.5 py-2 text-xs text-slate-200 flex items-center gap-2 shadow-lg">
                 <Move className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                <span>Arraste o objeto 3D em qualquer direção para girá-lo em 360°</span>
+                <span>
+                  {isEn
+                    ? 'Drag the 3D object in any direction to rotate it 360°'
+                    : 'Arraste o objeto 3D em qualquer direção para girá-lo em 360°'}
+                </span>
               </div>
             </div>
 
             {/* Painel principal de História, Importância e Especificações do Objeto 3D */}
             <section
-              aria-label={`Detalhes sobre ${activeArtifact.name}`}
+              aria-label={
+                isEn
+                  ? `Details about ${activeArtifact.name}`
+                  : `Detalhes sobre ${activeArtifact.name}`
+              }
               className="pointer-events-auto w-full lg:max-w-xl rounded-2xl bg-[#050D1D]/92 backdrop-blur-xl border border-sky-400/40 p-4 sm:p-5 shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-fadeIn"
             >
               {/* Cabeçalho com Ícone Cartoonizado + Missão + Localização */}
@@ -137,7 +200,7 @@ export const DestinationInfoPanel: React.FC<DestinationInfoPanelProps> = ({
                   }`}
                 >
                   <Cpu className="w-3.5 h-3.5 text-sky-400" />
-                  <span>Descrição</span>
+                  <span>{isEn ? 'Overview' : 'Descrição'}</span>
                 </button>
                 <button
                   type="button"
@@ -149,7 +212,7 @@ export const DestinationInfoPanel: React.FC<DestinationInfoPanelProps> = ({
                   }`}
                 >
                   <History className="w-3.5 h-3.5 text-amber-400" />
-                  <span>História</span>
+                  <span>{isEn ? 'History' : 'História'}</span>
                 </button>
                 <button
                   type="button"
@@ -161,7 +224,7 @@ export const DestinationInfoPanel: React.FC<DestinationInfoPanelProps> = ({
                   }`}
                 >
                   <Award className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Importância</span>
+                  <span>{isEn ? 'Importance' : 'Importância'}</span>
                 </button>
               </div>
 
@@ -192,7 +255,11 @@ export const DestinationInfoPanel: React.FC<DestinationInfoPanelProps> = ({
           /* Visualização padrão quando explorando Terra, Lua ou Marte */
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <section
-              aria-label={`Informações sobre ${currentBody.name}`}
+              aria-label={
+                isEn
+                  ? `Information about ${currentBody.name}`
+                  : `Informações sobre ${currentBody.name}`
+              }
               className={`pointer-events-auto w-full lg:max-w-md rounded-2xl bg-[#050C1A]/82 backdrop-blur-md border border-[#162847] p-4 sm:p-5 shadow-[0_16px_40px_rgba(0,0,0,0.65)] transition-opacity duration-300 ${
                 isTraveling ? 'opacity-60' : 'opacity-100'
               }`}
@@ -214,11 +281,15 @@ export const DestinationInfoPanel: React.FC<DestinationInfoPanelProps> = ({
                   type="button"
                   disabled={isTraveling}
                   onClick={onResetOrientation}
-                  title="Restaurar a orientação inicial da visualização"
+                  title={
+                    isEn
+                      ? 'Reset initial view orientation'
+                      : 'Restaurar a orientação inicial da visualização'
+                  }
                   className="shrink-0 h-8 px-3 rounded-lg bg-[#0A1933]/90 hover:bg-[#10264C] border border-sky-400/30 hover:border-sky-400/60 text-xs font-medium text-sky-100 flex items-center gap-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <RotateCcw className="w-3.5 h-3.5 text-sky-400" />
-                  <span>Restaurar orientação</span>
+                  <span>{isEn ? 'Reset orientation' : 'Restaurar orientação'}</span>
                 </button>
               </div>
 
@@ -229,22 +300,30 @@ export const DestinationInfoPanel: React.FC<DestinationInfoPanelProps> = ({
               <div className="mt-3.5 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300">
                 <div className="flex items-center gap-4">
                   <span>
-                    <strong className="text-slate-400 font-normal">Raio:</strong>{' '}
+                    <strong className="text-slate-400 font-normal">
+                      {isEn ? 'Radius:' : 'Raio:'}
+                    </strong>{' '}
                     {currentBody.telemetry.meanRadius}
                   </span>
                   <span>
-                    <strong className="text-slate-400 font-normal">Gravidade:</strong>{' '}
+                    <strong className="text-slate-400 font-normal">
+                      {isEn ? 'Gravity:' : 'Gravidade:'}
+                    </strong>{' '}
                     {currentBody.telemetry.gravity}
                   </span>
                 </div>
 
                 {loadedAsset?.source === 'provisional-sphere' && (
                   <span
-                    title="Esfera procedural ativa. Adicione o arquivo GLB em 3d_models/ para substituí-la automaticamente."
+                    title={
+                      isEn
+                        ? 'Procedural sphere active. Add the GLB file in 3d_models/ to replace it automatically.'
+                        : 'Esfera procedural ativa. Adicione o arquivo GLB em 3d_models/ para substituí-la automaticamente.'
+                    }
                     className="inline-flex items-center gap-1 text-[10px] text-sky-300/85 bg-sky-950/50 border border-sky-400/25 px-2 py-0.5 rounded"
                   >
                     <Info className="w-3 h-3 text-sky-400" />
-                    Esfera provisória (pronta para GLB)
+                    {isEn ? 'Provisional sphere (GLB ready)' : 'Esfera provisória (pronta para GLB)'}
                   </span>
                 )}
               </div>
@@ -259,10 +338,13 @@ export const DestinationInfoPanel: React.FC<DestinationInfoPanelProps> = ({
                 >
                   <div>
                     <p className="text-[11px] text-sky-300 font-medium">
-                      Destino em foco: <strong className="text-white">{highlightedBody.name}</strong>
+                      {isEn ? 'Focused destination:' : 'Destino em foco:'}{' '}
+                      <strong className="text-white">{highlightedBody.name}</strong>
                     </p>
                     <p className="text-[11px] text-slate-300 mt-0.5">
-                      Clique duas vezes no astro ou acione ao lado para iniciar a viagem.
+                      {isEn
+                        ? 'Double-click the body or press the button to start travel.'
+                        : 'Clique duas vezes no astro ou acione ao lado para iniciar a viagem.'}
                     </p>
                   </div>
                   <button
@@ -271,7 +353,11 @@ export const DestinationInfoPanel: React.FC<DestinationInfoPanelProps> = ({
                     className="shrink-0 h-8 px-3.5 rounded-lg bg-sky-400 hover:bg-sky-300 text-[#020611] font-display font-semibold text-xs flex items-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   >
                     <Navigation className="w-3.5 h-3.5" />
-                    <span>Viajar para {highlightedBody.name}</span>
+                    <span>
+                      {isEn
+                        ? `Travel to ${highlightedBody.name}`
+                        : `Viajar para ${highlightedBody.name}`}
+                    </span>
                   </button>
                 </div>
               )}
@@ -279,7 +365,15 @@ export const DestinationInfoPanel: React.FC<DestinationInfoPanelProps> = ({
               <div className="rounded-full bg-[#050C1A]/82 backdrop-blur-md border border-[#162847] px-4 py-2 text-xs text-slate-200 flex items-center justify-center sm:justify-start gap-2.5 shadow-lg">
                 <Move className="w-3.5 h-3.5 text-sky-400 shrink-0" aria-hidden="true" />
                 <span>
-                  Clique nos <strong>Pins Cartoonizados</strong> (nos astros ou à deriva no espaço) para saltar na velocidade da luz até o objeto 3D.
+                  {isEn ? (
+                    <>
+                      Click the <strong>Cartoon Pins</strong> (on worlds or drifting in space) to jump at light speed to the 3D object.
+                    </>
+                  ) : (
+                    <>
+                      Clique nos <strong>Pins Cartoonizados</strong> (nos astros ou à deriva no espaço) para saltar na velocidade da luz até o objeto 3D.
+                    </>
+                  )}
                 </span>
               </div>
             </div>
@@ -290,22 +384,28 @@ export const DestinationInfoPanel: React.FC<DestinationInfoPanelProps> = ({
         <div className="pointer-events-auto self-center w-full sm:w-auto overflow-x-auto no-scrollbar">
           <div
             role="group"
-            aria-label="Relíquias e Objetos Abandonados da NASA"
+            aria-label={isEn ? 'NASA Relics & Space Objects' : 'Relíquias e Objetos Abandonados da NASA'}
             className="inline-flex items-center gap-1.5 sm:gap-2 p-1.5 rounded-2xl bg-[#040B18]/90 backdrop-blur-md border border-[#172B4D] shadow-[0_10px_32px_rgba(0,0,0,0.65)]"
           >
             <span className="hidden md:inline-flex items-center gap-1.5 pl-2.5 pr-1 text-[11px] font-display font-semibold uppercase tracking-wider text-sky-300/90">
               <Sparkles className="w-3.5 h-3.5 text-sky-400" />
-              Objetos 3D:
+              {isEn ? '3D Objects:' : 'Objetos 3D:'}
             </span>
 
             {SPACE_ARTIFACT_ORDER.map((id) => {
-              const art = SPACE_ARTIFACTS[id];
+              const art = getLocalizedArtifact(id, lang);
               const isSelectedArt = activeArtifactId === id;
               const badgeTag =
                 art.placementType === 'deep-space'
-                  ? 'À Deriva'
+                  ? isEn
+                    ? 'Drifting'
+                    : 'À Deriva'
                   : art.relatedBodyId === 'moon'
-                  ? 'Lua'
+                  ? isEn
+                    ? 'Moon'
+                    : 'Lua'
+                  : isEn
+                  ? 'Mars'
                   : 'Marte';
 
               return (
@@ -314,7 +414,7 @@ export const DestinationInfoPanel: React.FC<DestinationInfoPanelProps> = ({
                   type="button"
                   disabled={isTraveling}
                   onClick={() => onSelectArtifact(id)}
-                  title={`${art.name} (${art.locationLabel}) — Clique para viajar na velocidade da luz`}
+                  title={`${art.name} (${art.locationLabel})`}
                   className={`group relative flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-left transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
                     isSelectedArt
                       ? 'bg-[#0E2752] border-sky-400 text-white shadow-[0_0_20px_rgba(56,189,248,0.35)] scale-[1.02]'

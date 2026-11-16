@@ -25,6 +25,35 @@ import { HeaderHud } from './components/ui/HeaderHud';
 import { DestinationInfoPanel } from './components/ui/DestinationInfoPanel';
 import { LoadingScreen } from './components/ui/LoadingScreen';
 import { WebGLFallbackScreen } from './components/ui/WebGLFallbackScreen';
+import { MissionButton } from './components/ui/MissionButton';
+import {
+  ActiveMissionMode,
+  MissionOverlayPanel,
+} from './components/ui/MissionOverlayPanel';
+import { getEchoesSignals } from './config/missions/echoesOfSpaceConfig';
+import { OPPORTUNITY_MISSION } from './config/missions/opportunityMission';
+import {
+  EchoesHotspot3D,
+  EchoesPersistedState,
+  EchoesSignalId,
+} from './types/echoesMission';
+import { MissionId } from './types/mission';
+import {
+  loadEchoesState,
+  resetEchoesState,
+  saveEchoesState,
+} from './utils/echoesProgress';
+import {
+  Language,
+  LanguageContext,
+  loadLanguage,
+  saveLanguage,
+} from './utils/i18n';
+import {
+  loadUnlockedEndings,
+  saveUnlockedEnding,
+  UnlockedEndingsMap,
+} from './utils/missionProgress';
 
 function checkWebGLSupport(): boolean {
   if (typeof window === 'undefined') return true;
@@ -63,7 +92,18 @@ export const App: React.FC = () => {
     Partial<Record<CelestialBodyId, LoadedCelestialAsset>>
   >({});
 
-  const [audioEnabled, setAudioEnabled] = useState<boolean>(false);
+  const [audioEnabled, setAudioEnabled] = useState<boolean>(() => soundEffects.isEnabled());
+
+  // Inicializa a trilha de fundo oficial (áudio contínuo de 10 min)
+  useEffect(() => {
+    const cleanup = soundEffects.initAutoPlay((active) => {
+      setAudioEnabled(active);
+    });
+
+    return () => {
+      cleanup();
+    };
+  }, []);
 
   const [viewportTier, setViewportTier] = useState<ViewportTier>(() =>
     typeof window !== 'undefined' ? getViewportTier(window.innerWidth) : 'desktop'
@@ -308,68 +348,240 @@ export const App: React.FC = () => {
   );
 
   const handleToggleAudio = useCallback(() => {
-    const next = soundEffects.setEnabled(!audioEnabled);
+    const next = soundEffects.setEnabled(!soundEffects.isEnabled());
     setAudioEnabled(next);
-  }, [audioEnabled]);
+  }, []);
+
+  const [lang, setLangState] = useState<Language>(() => loadLanguage());
+
+  const handleSetLang = useCallback((nextLang: Language) => {
+    setLangState(nextLang);
+    saveLanguage(nextLang);
+  }, []);
+
+  const handleToggleLang = useCallback(() => {
+    setLangState((prev) => {
+      const next = prev === 'pt' ? 'en' : 'pt';
+      saveLanguage(next);
+      return next;
+    });
+  }, []);
+
+  const [isMissionPanelOpen, setIsMissionPanelOpen] = useState<boolean>(false);
+  const [activeMissionMode, setActiveMissionMode] =
+    useState<ActiveMissionMode>('echoes_of_space');
+  const [hasActiveMissionRun, setHasActiveMissionRun] = useState<boolean>(false);
+  const [unlockedEndings, setUnlockedEndings] = useState<UnlockedEndingsMap>(() =>
+    loadUnlockedEndings()
+  );
+
+  // Estado persistente e controles de "Beyond the Mission: Ecos do Espaço"
+  const [echoesState, setEchoesState] = useState<EchoesPersistedState>(() =>
+    loadEchoesState()
+  );
+  const [activeEchoesSignalId, setActiveEchoesSignalId] =
+    useState<EchoesSignalId | null>(null);
+  const [selectedHotspotId, setSelectedHotspotId] = useState<string | null>(null);
+  // Por padrão, as pistas começam ocultas para manter o mistério (o usuário pode clicar no botão para mostrá-las)
+  const [revealCluesList, setRevealCluesList] = useState<boolean>(false);
+
+  const handleUpdateEchoesState = useCallback(
+    (updater: (prev: EchoesPersistedState) => EchoesPersistedState) => {
+      setEchoesState((prev) => {
+        const next = updater(prev);
+        return saveEchoesState(next);
+      });
+    },
+    []
+  );
+
+  const handleResetEchoes = useCallback(() => {
+    const fresh = resetEchoesState();
+    setEchoesState(fresh);
+    setActiveEchoesSignalId(null);
+    setSelectedHotspotId(null);
+    setRevealCluesList(false);
+  }, []);
+
+  const handleInspectHotspot = useCallback(
+    (hotspot: EchoesHotspot3D) => {
+      soundEffects.playMissionClick();
+      setSelectedHotspotId(hotspot.id);
+
+      // Orienta suavemente o modelo 3D até o ponto de interesse inspecionado
+      dragStateRef.current.targetRotationOffset.set(
+        hotspot.targetRotation[0],
+        hotspot.targetRotation[1]
+      );
+
+      handleUpdateEchoesState((prev) => {
+        const existing = prev.discoveredClues[hotspot.signalId] ?? [];
+        if (existing.includes(hotspot.id)) return prev;
+        return {
+          ...prev,
+          discoveredClues: {
+            ...prev.discoveredClues,
+            [hotspot.signalId]: [...existing, hotspot.id],
+          },
+        };
+      });
+    },
+    [handleUpdateEchoesState]
+  );
+
+  const handleToggleMissionPanel = useCallback(() => {
+    soundEffects.playMissionClick();
+    setIsMissionPanelOpen((prev) => !prev);
+  }, []);
+
+  const handleUnlockEnding = useCallback((missionId: MissionId, endingId: string) => {
+    const updated = saveUnlockedEnding(missionId, endingId);
+    setUnlockedEndings(updated);
+  }, []);
 
   if (!webglSupported) {
     return <WebGLFallbackScreen />;
   }
 
+  const opportunityUnlockedCount =
+    unlockedEndings.opportunity_deep_journey?.length ?? 0;
+
+  const localizedEchoesSignals = getEchoesSignals(lang);
+  const activeEchoesSignal = activeEchoesSignalId
+    ? localizedEchoesSignals[activeEchoesSignalId]
+    : null;
+
+  const activeHotspotsFor3D =
+    isMissionPanelOpen &&
+    activeMissionMode === 'echoes_of_space' &&
+    activeEchoesSignal &&
+    activeArtifactId === activeEchoesSignal.relatedArtifactId
+      ? activeEchoesSignal.hotspots
+      : [];
+
+  const discoveredHotspotIdsFor3D = activeEchoesSignalId
+    ? echoesState.discoveredClues[activeEchoesSignalId] ?? []
+    : [];
+
+  const isUnidentifiedInvestigationMode = Boolean(
+    isMissionPanelOpen &&
+      activeMissionMode === 'echoes_of_space' &&
+      activeEchoesSignal &&
+      activeArtifactId === activeEchoesSignal.relatedArtifactId &&
+      !echoesState.reconstructedSignals.includes(activeEchoesSignal.id)
+  );
+
   return (
-    <div className="relative w-full h-full overflow-hidden bg-[#02040A]">
-      {(experienceState === 'loading' || experienceState === 'error') && (
-        <LoadingScreen
-          progress={loadProgress}
-          statusLabel={loadStatusLabel}
-          errorMessage={loadError}
-          onRetry={() => runPreload(true)}
-          onContinueWithFallback={handleContinueWithProvisional}
-          onFinishTransition={() => setExperienceState('exploring')}
+    <LanguageContext.Provider
+      value={{
+        lang,
+        setLang: handleSetLang,
+        toggleLang: handleToggleLang,
+      }}
+    >
+      <div className="relative w-full h-full overflow-hidden bg-[#02040A]">
+        {(experienceState === 'loading' || experienceState === 'error') && (
+          <LoadingScreen
+            progress={loadProgress}
+            statusLabel={loadStatusLabel}
+            errorMessage={loadError}
+            onRetry={() => runPreload(true)}
+            onContinueWithFallback={handleContinueWithProvisional}
+            onFinishTransition={() => setExperienceState('exploring')}
+          />
+        )}
+
+        <SpaceExperienceCanvas
+          selectedId={selectedId}
+          highlightedId={highlightedId}
+          activeArtifactId={activeArtifactId}
+          experienceState={experienceState}
+          viewportTier={viewportTier}
+          reducedMotion={reducedMotion}
+          loadedAssets={loadedAssets}
+          dragStateRef={dragStateRef}
+          parallaxOffsetRef={parallaxOffsetRef}
+          travelRef={travelRef}
+          onHighlightBody={handleHighlightBody}
+          onInitiateTravel={handleInitiateTravel}
+          onSelectArtifact={handleSelectArtifact}
+          onTravelPhaseChange={setTravelPhase}
+          onTravelComplete={handleTravelComplete}
+          activeHotspots={activeHotspotsFor3D}
+          discoveredHotspotIds={discoveredHotspotIdsFor3D}
+          selectedHotspotId={selectedHotspotId}
+          revealCluesList={revealCluesList}
+          onSelectHotspot={handleInspectHotspot}
         />
-      )}
 
-      <SpaceExperienceCanvas
-        selectedId={selectedId}
-        highlightedId={highlightedId}
-        activeArtifactId={activeArtifactId}
-        experienceState={experienceState}
-        viewportTier={viewportTier}
-        reducedMotion={reducedMotion}
-        loadedAssets={loadedAssets}
-        dragStateRef={dragStateRef}
-        parallaxOffsetRef={parallaxOffsetRef}
-        travelRef={travelRef}
-        onHighlightBody={handleHighlightBody}
-        onInitiateTravel={handleInitiateTravel}
-        onSelectArtifact={handleSelectArtifact}
-        onTravelPhaseChange={setTravelPhase}
-        onTravelComplete={handleTravelComplete}
-      />
+        <HeaderHud
+          selectedId={selectedId}
+          targetTravelId={targetTravelId}
+          experienceState={experienceState}
+          travelPhase={travelPhase}
+          audioEnabled={audioEnabled}
+          reducedMotion={reducedMotion}
+          onSelectDestination={handleInitiateTravel}
+          onToggleAudio={handleToggleAudio}
+        />
 
-      <HeaderHud
-        selectedId={selectedId}
-        targetTravelId={targetTravelId}
-        experienceState={experienceState}
-        travelPhase={travelPhase}
-        audioEnabled={audioEnabled}
-        reducedMotion={reducedMotion}
-        onSelectDestination={handleInitiateTravel}
-        onToggleAudio={handleToggleAudio}
-      />
+        {experienceState !== 'loading' && experienceState !== 'error' && (
+          <>
+            <MissionButton
+              isOpen={isMissionPanelOpen}
+              echoesReconstructedCount={echoesState.reconstructedSignals.length}
+              unlockedCount={opportunityUnlockedCount}
+              totalEndings={OPPORTUNITY_MISSION.endingOrder.length}
+              hasActiveRun={hasActiveMissionRun}
+              onToggle={handleToggleMissionPanel}
+            />
 
-      <DestinationInfoPanel
-        selectedId={selectedId}
-        highlightedId={highlightedId}
-        activeArtifactId={activeArtifactId}
-        experienceState={experienceState}
-        loadedAsset={loadedAssets[selectedId]}
-        onResetOrientation={handleResetOrientation}
-        onTravelToHighlighted={handleInitiateTravel}
-        onSelectArtifact={handleSelectArtifact}
-        onCloseArtifact={handleCloseArtifact}
-      />
-    </div>
+            <MissionOverlayPanel
+              isOpen={isMissionPanelOpen}
+              activeMissionMode={activeMissionMode}
+              onSelectMissionMode={setActiveMissionMode}
+              unlockedEndings={unlockedEndings}
+              activeArtifactId={activeArtifactId}
+              echoesState={echoesState}
+              activeEchoesSignalId={activeEchoesSignalId}
+              selectedHotspotId={selectedHotspotId}
+              revealCluesList={revealCluesList}
+              onToggleRevealCluesList={() => setRevealCluesList((prev) => !prev)}
+              onSelectEchoesSignal={(sigId) => {
+                setActiveEchoesSignalId(sigId);
+                setSelectedHotspotId(null);
+                setRevealCluesList(false);
+              }}
+              onInspectHotspot={handleInspectHotspot}
+              onUpdateEchoesState={handleUpdateEchoesState}
+              onResetEchoes={handleResetEchoes}
+              onClose={() => setIsMissionPanelOpen(false)}
+              onFocusArtifact={handleSelectArtifact}
+              onUnlockEnding={handleUnlockEnding}
+              onActiveRunChange={setHasActiveMissionRun}
+            />
+          </>
+        )}
+
+        <DestinationInfoPanel
+          selectedId={selectedId}
+          highlightedId={highlightedId}
+          activeArtifactId={activeArtifactId}
+          experienceState={experienceState}
+          loadedAsset={loadedAssets[selectedId]}
+          onResetOrientation={handleResetOrientation}
+          onTravelToHighlighted={handleInitiateTravel}
+          onSelectArtifact={handleSelectArtifact}
+          onCloseArtifact={handleCloseArtifact}
+          unidentifiedInvestigationMode={isUnidentifiedInvestigationMode}
+          unidentifiedSignalTitle={
+            activeEchoesSignal
+              ? `${activeEchoesSignal.signalCode}: “${activeEchoesSignal.unidentifiedTitle}”`
+              : undefined
+          }
+        />
+      </div>
+    </LanguageContext.Provider>
   );
 };
 

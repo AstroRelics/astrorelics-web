@@ -1,7 +1,9 @@
 import React from 'react';
-import { Volume2, VolumeX, Sparkles } from 'lucide-react';
-import { CELESTIAL_BODIES, CELESTIAL_BODY_ORDER } from '../../config/celestialBodies';
+import { Volume2, VolumeX, Sparkles, Globe } from 'lucide-react';
+import { CELESTIAL_BODY_ORDER } from '../../config/celestialBodies';
 import { CelestialBodyId, ExperienceState, TravelPhase } from '../../types/experience';
+import { getLocalizedBody, useLanguage } from '../../utils/i18n';
+import { soundEffects } from '../../utils/soundEffects';
 
 interface HeaderHudProps {
   selectedId: CelestialBodyId;
@@ -14,11 +16,18 @@ interface HeaderHudProps {
   onToggleAudio: () => void;
 }
 
-const TRAVEL_PHASE_LABELS: Record<TravelPhase, string> = {
+const TRAVEL_PHASE_LABELS_PT: Record<TravelPhase, string> = {
   idle: 'Órbita Estável',
   acceleration: 'Aceleração Orbital...',
   cruise: 'Em Viagem Interplanetária...',
   arrival: 'Aproximação Final...',
+};
+
+const TRAVEL_PHASE_LABELS_EN: Record<TravelPhase, string> = {
+  idle: 'Stable Orbit',
+  acceleration: 'Orbital Acceleration...',
+  cruise: 'Interplanetary Cruise...',
+  arrival: 'Final Approach...',
 };
 
 export const HeaderHud: React.FC<HeaderHudProps> = ({
@@ -31,8 +40,11 @@ export const HeaderHud: React.FC<HeaderHudProps> = ({
   onSelectDestination,
   onToggleAudio,
 }) => {
+  const { lang, toggleLang } = useLanguage();
+  const isEn = lang === 'en';
   const isTraveling = experienceState === 'traveling';
   const activeSelectorId = isTraveling && targetTravelId ? targetTravelId : selectedId;
+  const phaseLabels = isEn ? TRAVEL_PHASE_LABELS_EN : TRAVEL_PHASE_LABELS_PT;
 
   const handleKeyDownSelector = (
     e: React.KeyboardEvent<HTMLButtonElement>,
@@ -51,6 +63,11 @@ export const HeaderHud: React.FC<HeaderHudProps> = ({
     }
   };
 
+  const handleToggleLanguage = () => {
+    soundEffects.playMissionClick();
+    toggleLang();
+  };
+
   return (
     <header className="fixed top-0 inset-x-0 z-20 pointer-events-none px-4 pt-3.5 sm:px-7 sm:pt-5">
       <div className="max-w-7xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -59,21 +76,54 @@ export const HeaderHud: React.FC<HeaderHudProps> = ({
           <div className="flex items-center">
             <img
               src="/logo-header.png"
-              alt="Beyond the Mission — Exploração Espacial Interativa"
-              title="Beyond the Mission — Exploração Espacial Interativa"
+              alt={
+                isEn
+                  ? 'Beyond the Mission — Interactive Space Exploration'
+                  : 'Beyond the Mission — Exploração Espacial Interativa'
+              }
+              title={
+                isEn
+                  ? 'Beyond the Mission — Interactive Space Exploration'
+                  : 'Beyond the Mission — Exploração Espacial Interativa'
+              }
               className="h-11 sm:h-14 w-auto object-contain select-none pointer-events-none drop-shadow-[0_0_14px_rgba(255,255,255,0.18)]"
               draggable={false}
             />
-            <h1 className="sr-only">Beyond the Mission — Exploração Espacial Interativa</h1>
+            <h1 className="sr-only">
+              {isEn
+                ? 'Beyond the Mission — Interactive Space Exploration'
+                : 'Beyond the Mission — Exploração Espacial Interativa'}
+            </h1>
           </div>
 
-          {/* Controle de áudio visível no canto direito no mobile */}
+          {/* Controles visíveis no canto direito no mobile (Idioma PT/EN + Áudio) */}
           <div className="flex sm:hidden items-center gap-2">
+            <button
+              type="button"
+              onClick={handleToggleLanguage}
+              aria-label={isEn ? 'Switch language to Portuguese' : 'Mudar idioma para Inglês'}
+              title={isEn ? 'Switch to Português (PT)' : 'Mudar para English (EN)'}
+              className="h-9 px-2.5 rounded-full backdrop-blur-md bg-[#050C1A]/85 border border-sky-400/50 text-xs font-mono font-bold text-sky-200 flex items-center gap-1.5 transition-all"
+            >
+              <Globe className="w-3.5 h-3.5 text-sky-400" />
+              <span className={lang === 'pt' ? 'text-amber-300' : 'text-slate-400'}>PT</span>
+              <span className="text-slate-600">/</span>
+              <span className={lang === 'en' ? 'text-amber-300' : 'text-slate-400'}>EN</span>
+            </button>
+
             <button
               type="button"
               onClick={onToggleAudio}
               aria-pressed={audioEnabled}
-              aria-label={audioEnabled ? 'Desativar efeitos sonoros' : 'Ativar efeitos sonoros'}
+              aria-label={
+                audioEnabled
+                  ? isEn
+                    ? 'Mute background audio'
+                    : 'Desativar áudio de fundo'
+                  : isEn
+                  ? 'Enable background audio'
+                  : 'Ativar áudio de fundo'
+              }
               className={`h-9 px-3 rounded-full backdrop-blur-md border text-xs font-medium flex items-center gap-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
                 audioEnabled
                   ? 'bg-[#0A1E3C]/85 border-sky-400/60 text-sky-200'
@@ -85,23 +135,23 @@ export const HeaderHud: React.FC<HeaderHudProps> = ({
               ) : (
                 <VolumeX className="w-3.5 h-3.5 text-slate-400" />
               )}
-              <span>{audioEnabled ? 'Som ativo' : 'Som'}</span>
+              <span>{audioEnabled ? (isEn ? 'Sound On' : 'Som ativo') : isEn ? 'Sound' : 'Som'}</span>
             </button>
           </div>
         </div>
 
         {/* Seletor de destinos: acessível por teclado e toque único no celular */}
         <nav
-          aria-label="Seletor de destinos espaciais"
+          aria-label={isEn ? 'Space destinations selector' : 'Seletor de destinos espaciais'}
           className="pointer-events-auto self-center sm:self-auto w-full sm:w-auto flex justify-center"
         >
           <div
             role="group"
-            aria-label="Destinos: Terra, Lua e Marte"
+            aria-label={isEn ? 'Destinations: Earth, Moon and Mars' : 'Destinos: Terra, Lua e Marte'}
             className="inline-flex items-center p-1 rounded-full bg-[#050C1A]/85 backdrop-blur-md border border-[#162847] shadow-[0_8px_30px_rgba(0,0,0,0.55)]"
           >
             {CELESTIAL_BODY_ORDER.map((id, idx) => {
-              const body = CELESTIAL_BODIES[id];
+              const body = getLocalizedBody(id, lang);
               const isCurrent = activeSelectorId === id;
 
               return (
@@ -132,7 +182,7 @@ export const HeaderHud: React.FC<HeaderHudProps> = ({
           </div>
         </nav>
 
-        {/* Controles superiores direitos (Desktop / Tablet): status de viagem + áudio */}
+        {/* Controles superiores direitos (Desktop / Tablet): status de viagem + Idioma PT/EN + áudio */}
         <div className="hidden sm:flex items-center gap-2.5 pointer-events-auto">
           {isTraveling && (
             <div
@@ -141,24 +191,63 @@ export const HeaderHud: React.FC<HeaderHudProps> = ({
               className="px-3 py-1.5 rounded-full bg-[#08152C]/85 border border-sky-400/40 backdrop-blur-md text-xs text-sky-300 flex items-center gap-2"
             >
               <Sparkles className="w-3.5 h-3.5 text-sky-400 animate-spin" />
-              <span>{TRAVEL_PHASE_LABELS[travelPhase]}</span>
+              <span>{phaseLabels[travelPhase]}</span>
             </div>
           )}
 
           {reducedMotion && (
             <span
-              title="Preferência de movimento reduzido detectada no sistema"
+              title={
+                isEn
+                  ? 'Reduced motion preference detected'
+                  : 'Preferência de movimento reduzido detectada no sistema'
+              }
               className="px-2.5 py-1 rounded-full bg-[#061020]/80 border border-slate-700/70 text-[11px] text-slate-300"
             >
-              Movimento reduzido
+              {isEn ? 'Reduced motion' : 'Movimento reduzido'}
             </span>
           )}
+
+          {/* Botão de Troca de Idioma (PT / EN) */}
+          <button
+            type="button"
+            onClick={handleToggleLanguage}
+            aria-label={isEn ? 'Switch language to Portuguese' : 'Mudar idioma para Inglês'}
+            title={isEn ? 'Switch language to Português (PT)' : 'Mudar idioma para English (EN)'}
+            className="h-9 px-3 rounded-full backdrop-blur-md bg-[#050C1A]/85 hover:bg-[#0A1E3C]/90 border border-[#162847] hover:border-sky-400/50 text-xs font-mono font-bold text-slate-200 flex items-center gap-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+          >
+            <Globe className="w-3.5 h-3.5 text-sky-400" />
+            <span className={lang === 'pt' ? 'text-amber-300 underline underline-offset-4' : 'text-slate-400'}>
+              PT
+            </span>
+            <span className="text-slate-600">|</span>
+            <span className={lang === 'en' ? 'text-amber-300 underline underline-offset-4' : 'text-slate-400'}>
+              EN
+            </span>
+          </button>
 
           <button
             type="button"
             onClick={onToggleAudio}
             aria-pressed={audioEnabled}
-            aria-label={audioEnabled ? 'Desativar efeitos sonoros' : 'Ativar efeitos sonoros'}
+            aria-label={
+              audioEnabled
+                ? isEn
+                  ? 'Mute background audio'
+                  : 'Desativar áudio de fundo'
+                : isEn
+                ? 'Enable background audio'
+                : 'Ativar áudio de fundo'
+            }
+            title={
+              audioEnabled
+                ? isEn
+                  ? 'Mute (Background audio)'
+                  : 'Mudo (Áudio de fundo)'
+                : isEn
+                ? 'Play background audio'
+                : 'Tocar áudio de fundo'
+            }
             className={`h-9 px-3.5 rounded-full backdrop-blur-md border text-xs font-medium flex items-center gap-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
               audioEnabled
                 ? 'bg-[#0A1E3C]/90 border-sky-400/60 text-sky-100 shadow-[0_0_16px_rgba(56,189,248,0.2)]'
@@ -170,7 +259,15 @@ export const HeaderHud: React.FC<HeaderHudProps> = ({
             ) : (
               <VolumeX className="w-3.5 h-3.5 text-slate-400" />
             )}
-            <span>{audioEnabled ? 'Áudio ativo' : 'Áudio desativado'}</span>
+            <span>
+              {audioEnabled
+                ? isEn
+                  ? 'Audio On'
+                  : 'Áudio ativo'
+                : isEn
+                ? 'Audio Off'
+                : 'Áudio desativado'}
+            </span>
           </button>
         </div>
       </div>
